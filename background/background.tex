@@ -9,8 +9,18 @@
 This is to be pretty brief. Cover useful things -- what they look like, gradient descent
 (in brief) and outline some results on the expressive power.
 \subsection{Recurrent Neural Networks}
-What they look like, what they can do, how to train them (and when/why it doesn't work).
-LSTMs and GRUs? Or in related work?
+Recurrent Neural Networks (RNNs) generalise feed-forward networks to address problems 
+in which we wish to map a \emph{sequence} of inputs 
+\(\vec{x} = (\vec{x}_1, \vec{x}_2, \dots \vec{x}_T) \) to a sequence of outputs
+\(\vec{y} = (\vec{y}_1, \vec{y}_2, \dots \vec{y}_T) \)
+
+
+The classic RNN (often termed ``vanilla'') originally proposed in \autocite{ElmanXXXX}
+computes its hidden states with the following recurrence:
+\begin{equation}
+	\vec{h}_t = f(\mat{W}\vec{h}_{t-1} + \mat{U}\vec{x}_t +  b)
+\label{eq:vanillarnn}
+\end{equation}
 
 \section{Related Work}
 \subsection{Long Time Dependencies}
