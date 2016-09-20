@@ -39,7 +39,84 @@
 % [font|image]            Use a font or an image for the VUW logo
 %                          The font option will only work on ECS systems
 %
-\usepackage[font,ecs,bschonscomp]{vuwproject}
+\usepackage[image,ecs,bschonscomp]{vuwproject}
+
+\usepackage{microtype}
+\usepackage[style=numeric,
+			firstinits=true, 
+			url=false, 
+			isbn=false,
+			doi=false]
+			{biblatex}% "style=numeric" is default
+
+\addbibresource{library.bib}
+
+\DeclareNameAlias{default}{last-first}
+
+\AtBeginBibliography{%
+  \renewcommand*{\mkbibnamelast}[1]{\textsc{#1}}%
+  %% commas between authors
+  \renewcommand{\multinamedelim}{\addcomma\space}
+  \renewcommand{\finalnamedelim}{\addcomma\addspace\textsc{and}\space}
+}
+
+\DefineBibliographyStrings{english}{%
+ andothers = {\addcomma\addspace\textsc{et\addabbrvspace al}\adddot},
+ and = {\textsc{and}}
+}
+
+\renewcommand*{\labelnamepunct}{\space\space}
+
+\DeclareFieldFormat
+  [article,inbook,incollection,inproceedings,patent,thesis,unpublished]
+  {title}{#1}
+
+\renewbibmacro{in:}{%
+  \ifentrytype{article}{%
+  }{%
+    \printtext{\bibstring{in}\intitlepunct}%
+  }%
+}
+
+\renewbibmacro*{volume+number+eid}{%
+  \printfield{volume}%
+  \setunit*{\addcomma\space}%
+  \printfield{number}%
+  \setunit{\addcomma\space}%
+  \printfield{eid}}
+
+\DeclareFieldFormat{pages}{#1}
+
+\renewbibmacro*{publisher+location+date}{%
+  \printlist{publisher}%
+  \setunit*{\addcomma\space}%
+  \printlist{location}%
+  \setunit*{\addcomma\space}%
+  \usebibmacro{date}%
+  \newunit}
+
+\usepackage{tabu}
+\usepackage{graphicx}
+\usepackage{subcaption}
+
+\usepackage{mathtools}
+\mathtoolsset{showonlyrefs}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{bm}
+
+% theorem-like environments
+\newtheorem{prop}{Proposition}
+
+% tensor/vector/matrix commands
+\renewcommand\vec{\mathbf}
+\newcommand{\mat}{\mathbf}
+\newcommand{\tensor}[1]{\bm{\mathcal{#1}}}
+\newcommand*{\midbullet}{\raisebox{-0.25ex}{\scalebox{1.2}{$\cdot$}}}
+\DeclareMathOperator{\diag}{diag}
+
+\usepackage{hyperref}
+
 
 % You should specifiy your supervisor here with
 \supervisors{Marcus Frean and David Balduzzi}
@@ -102,8 +179,8 @@ A short description of the project goes here.
 
 
 %\bibliographystyle{ieeetr}
-\bibliographystyle{acm}
-\bibliography{sample}
-
+%\bibliographystyle{acm}
+%\bibliography{sample}
+\printbibliography
 
 \end{document}

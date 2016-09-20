@@ -1,26 +1,120 @@
-%% $RCSfile: using.tex,v $
-%% $Revision: 1.1 $
-%% $Date: 2010/04/23 01:57:05 $
-%% $Author: kevin $
-%%
+% !TEX root = ../proj_report_outline.tex
+
 \chapter{Background and Related Work}\label{C:bg}
 \section{Background}
 \subsection{Feed-Forward Neural Networks}
 This is to be pretty brief. Cover useful things -- what they look like, gradient descent
 (in brief) and outline some results on the expressive power.
+
 \subsection{Recurrent Neural Networks}
-Recurrent Neural Networks (RNNs) generalise feed-forward networks to address problems 
-in which we wish to map a \emph{sequence} of inputs 
+Recurrent Neural Networks (RNNs) of the form considered here generalise feed-forward networks to
+address problems in which we wish to map a \emph{sequence} of inputs 
 \(\vec{x} = (\vec{x}_1, \vec{x}_2, \dots \vec{x}_T) \) to a sequence of outputs
-\(\vec{y} = (\vec{y}_1, \vec{y}_2, \dots \vec{y}_T) \)
+\(\vec{y} = (\vec{y}_1, \vec{y}_2, \dots \vec{y}_T) \). They have been applied successful to a
+wide range of tasks which can be framed in this way including statistical language modelling
+\autocite{Mikolov2012} (including machine translation \autocite{Cho2014}), speech recognition \autocite{Graves2006}, polyphonic music 
+modelling \autocite{Boulanger-Lewandowski2012}, music classification \autocite{Choi2016},
+image generation \autocite{Gregor2015} and more.
 
+\subsubsection{Original Formulation}
+An RNN is able to maintain context over a sequence by transferring its hidden state from one
+time-step to the next. We refer to the vector of states at time \(t\) as \(\vec{h}_t\).
 
-The classic RNN (often termed ``vanilla'') originally proposed in \autocite{ElmanXXXX}
+The classic RNN (often termed ``vanilla'') originally proposed in \autocite{Elman1990}
 computes its hidden states with the following recurrence:
 \begin{equation}
-	\vec{h}_t = f(\mat{W}\vec{h}_{t-1} + \mat{U}\vec{x}_t +  b)
+	\vec{h}_t = f(\mat{W}\vec{h}_{t-1} + \mat{U}\vec{x}_t +  \vec{b})
 \label{eq:vanillarnn}
-\end{equation}
+\end{equation} where \(f(\cdot)\) is some elementwise non-linearity, often the hyperbolic tangent:
+\(\tanh(x) = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}\).
+
+Equation \eqref{eq:vanillarnn} bears a striking resemblance to the building block of a 
+feed-forward network. The key difference is the (square) matrix \(\mat{W}\) which contains weights
+controlling how the previous state affects the computation of the new activations.
+
+\subsubsection{Training}
+We can train this (or any of the variants we will see subsequently) using back-propagation.
+Often termed ``Back Propagation Through Time'' \autocite{Werbos1990} which requires using the
+chain rule to determine the gradients of the loss with respect to the network parameters in
+the same manner as for feedforward networks.
+
+To understand what is required to perform this, consider a loss function for the whole sequence of
+the form
+\begin{equation}
+	\mathcal{L}(\hat{\vec{y}}_1, \hat{\vec{y}}_2, \dots, \hat{\vec{y}}_T,
+				\vec{y}_1, \vec{y}_2, \dots, \vec{y}_T)
+	= \sum_{i=1}^T \mathcal{L}_i(\hat{\vec{y}}_i, \vec{y}_i),
+	\label{eq:seqloss}
+\end{equation} which is a sum of the loss accrued at each time-step. This captures all common
+cases including sequence classification or regression, as the \(\mathcal{L}_i\) may simply return
+\(0\) for all but the last time-step. To find gradients of the loss with respect the parameters
+which generate the hidden states, we must first find the gradient of the loss with respect to the
+hidden states themselves. Choosing a hidden state \(i\) somewhere in the sequence we have:
+\begin{equation}
+	\nabla_{\vec{h}_i}\mathcal{L} = \sum_{j=i}^t \nabla_{\vec{h}_i}\mathcal{L}_j
+	\label{eq:delhL}
+\end{equation} from the definition of the loss and the fact that a hidden state may affect all
+future losses. To determine each \(\nabla_{\vec{h_i}}\mathcal{L}_j\) (noting \(j \geq i\)), we
+apply the chain rule, to back-propagate the error from time \(j\) to time \(i\). This is the step
+from which the algorithm derives its name, and simply requires multiplying through adjacent
+timesteps. Let \(\vec{z}_k = \mat{W}\vec{h}_{t-1} + \mat{U}\vec{x}_t +  \vec{b}\) be the
+pre-activation of the hidden states. Then
+\begin{align}
+	\nabla_{\vec{h}_i} \mathcal{L}_j &= 
+	(\nabla_{\vec{h}_j})^{\mathsf{T}}\mathcal{L}_j \left(
+		\prod_{k=i+1}^j \frac{\partial \vec{h}_k}{\partial\vec{h}_{k-1}}\right)\\
+	&=  (\nabla_{\vec{h}_j}\mathcal{L}_j)^{\mathsf{T}} \left(
+		\prod_{k=i+1}^j \nabla_{\vec{z}_k}f \cdot \mat{W}\right).
+	\label{eq:bptt-v}
+\end{align} This has two key components: \(\nabla_{\vec{h}_j}\mathcal{L}_j\) quantifies the degree
+to which the hidden states at time \(j\) affect the loss (computing this will most likely require
+further back-propagation through one or more output layers) while the second term in
+equation~\eqref{eq:bptt-v} measures how much the hidden state at time \(i\) affects the hidden
+state at time \(j\).
+
+We can now derive an update rule for the parameters by observing
+\begin{align}
+	\nabla_{\mat{W}} \mathcal{L} &= \sum_{i=1}^T \nabla_{\mat{W}} \mathcal{L}_i \\
+	&= \sum_{i=1}^T\sum_{j=1}^i\nabla_{\mat{h}_j} \mathcal{L}_i \nabla_{\mat{W}} \vec{h}_j
+\end{align} 
+{\Large shapes, get them right}\\
+and applying the above. For the input matrix and the bias the process is the same.
+
+\subsubsection{Issues}
+Equation~\eqref{eq:bptt-v} reveals a key pathology of the vanilla RNN -- vanishing gradients.
+This occurs when the gradient of the loss vanishes to a negligibly small value as we
+propagate it backward in time, leading to a negligible update to the weights.
+ \((\nabla_{\vec{h}_j}\mathcal{L}_j)^\mathsf{T}\) (a vector) is multiplied by a long product of
+ matrices, alternating between \(\nabla_{\vec{z}_k} f\) and \(\mat{W}\). If we assume for
+ illustrative purposes that \(f(\cdot)\) is the identity function (so we have a linear network),
+then the loss vector is multiplied by \(\mat{W}\) taken to the \((j-i)\)th power. If the largest
+eigenvalue of \(\mat{W}\) is large, then this will cause the gradient to eventually explode.
+If the largest eignevalue is small, then the gradient will vanish. This issue was first presented
+in 1994 \autocite{Bengio1994}, while a thorough treatment including necessary conditions 
+for vanishing and the complementary exploding problem, see \autocite{Pascanu2012}.
+
+In the non-linear case, this remains a serious issue. While exploding gradients are often
+mitigated by using a \emph{saturating} non-linearity so that the gradient tends to zero as the
+hidden states grow, this only exacerbates the vanishing problem. 
+
+A second issue when training RNNs can be illustrated by viewing them as iterated non-linear
+dynamical systems and thus susceptible to the ``butterfly effect'': seemingly negligible changes
+in initial conditions can lead to catastrophic changes after a number of iterations
+\autocite{Lorenz1963}. In RNNs this manifests as near-discontinuity of the loss surface
+\autocite{Pascanu2012} as a change (for example, to a weight during back-propagation) which may
+even reduce the loss for a short period can cause instabilities further on which lead to steep
+increases in loss. This problem is not as well studied as vanishing gradients although some
+partial solutions exist such as clipping the norm of gradients \autocite{Pascanu2012} or
+using a regulariser to encourage gradual changes in hidden state \autocite{Krueger2016}.
+
+\subsubsection{Alternate Architectures}
+To address these fundamental problems a number of alternate architectures have been proposed.
+Here we will outline two popular variants: the Long Short Term Memory (LSTM) and the Gated
+Recurrent Unit (GRU). Both of these belong to a class of \emph{gated} RNNs, which have a
+completely novel method of computing a new state.
+
+The LSTM was proposed to alleviate the vanishing gradient problem. It computes a new state
+in a fundamentally different manner
 
 \section{Related Work}
 \subsection{Long Time Dependencies}
