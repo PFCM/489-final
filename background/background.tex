@@ -111,14 +111,87 @@ using a regulariser to encourage gradual changes in hidden state \autocite{Krueg
 To address these fundamental problems a number of alternate architectures have been proposed.
 Here we will outline two popular variants: the Long Short Term Memory (LSTM) and the Gated
 Recurrent Unit (GRU). Both of these belong to a class of \emph{gated} RNNs, which have a
-completely novel method of computing a new state.
+markedly different method of computing a new state.
 
-The LSTM was proposed to alleviate the vanishing gradient problem. It computes a new state
-in a fundamentally different manner, computed
+The LSTM was proposed to alleviate the vanishing gradient problem. It uses a number of gates
+to control the flow of information during the computation of new states. Although a large number
+of variants exist, the standard LSTM we will consider here has the form: 
+\autocite{Hochreiter1997, Graves2013}
+\begin{align}\label{eq:LSTM}
+	\vec{h}_t &= \vec{o}_i \odot \tau(\vec{c}_t)\\
+	\vec{c}_t &= \vec{f}_t \odot \vec{c}_{t-1} + \vec{i}_t \odot \vec{g}_t\\
+	\vec{g}_t &= \tau(\mat{W}_g \vec{c}_{t-1} + \mat{U}_g \vec{x}_t + \vec{b}_g)\\
+	\vec{o}_t &= \sigma(\mat{W}_o \vec{c}_{t-1} + \mat{U}_o \vec{x}_t + \vec{b}_o)\\
+	\vec{f}_t &= \sigma(\mat{W}_f \vec{c}_{t-1} + \mat{U}_f \vec{x}_t + \vec{b}_f)\\
+	\vec{i}_t &= \sigma(\mat{W}_i \vec{c}_{t-1} + \mat{U}_i \vec{x}_t + \vec{b}_i)
+\end{align} where \(\tau(\cdot)\) refers to the elementwise \(\tanh\), \(\sigma(\cdot)\) the
+elementwise logistic sigmoid \(\sigma(x) = \frac{1}{1 + e^{-x}}\) and \(\cdot \odot \cdot\)
+is used to denote elementwise multiplication between vectors. These equations can be hard to take
+at face value -- the key elements are \(\vec{i}_t, \vec{o}_t, \vec{f}_t\), termed the
+\emph{input}, \emph{output} and \emph{forget} gates respectively, are computed in the same fashion
+as the activations of a vanilla neural network but use sigmoid activation function which varies
+smoothly between zero and one. Combining this with elementwise multiplication has the eponymous
+gating effect, attenuating the contributions of other components. 
+
+The output gate is fairly straightforward, it simply allows the network to prevent its hidden
+state from being exposed. The forget and input gates have a more difficult role to characterise.
+Taken together, these control the acceptance or rejection of new information by modulating the
+amount by which the new candidate state \(\vec{g}_t\) is accepted into the hidden state
+\(\vec{c}_t\).
+
+A closely related architecture proposed much more recently by Cho et al. \autocite{Cho2014} is the
+GRU, which computes its state as follows:
+\begin{align}\label{eq:GRU}
+	\vec{h}_t &= \vec{f}_t \odot \vec{h}_{t-1} + (1 - \vec{f}_t)\odot\vec{z}_t\\
+	\vec{z}_t &= \tau(\mat{W}_z(\vec{r}_t \odot \vec{h}_{t-1}) + \mat{U}_z\vec{x}_t + \vec{b}_z)\\
+	\vec{f}_t &= \sigma(\mat{W}_f\vec{h}_{t-1} + \mat{U}_f\vec{x}_t + \vec{b}_f)\\
+	\vec{r}_t &= \sigma(\mat{W}_r\vec{h}_{t-1} + \mat{U}_r\vec{x}_t + \vec{b}_r).
+\end{align} This is a slightly simpler form than the LSTM although the alterations go beyond
+simply removing the output gate. Notably, the forget gate now controls both parts of the state
+update. Further, in the computation of \(\vec{z}_t\) there is a departure from the vanilla
+RNN-style building block that makes up all of the LSTM's operations. This is interesting as a
+half of the model's parameters, and therefore a large part of its computational power, is
+dedicated towards computing state updates. However, the mechanism of their computation places
+significant emphasis on using temporally local information to do so -- the \emph{reset} gate
+\(\vec{r}_t\) provides the model with the ability to ignore parts of its state.
+
+The key shared component of these architectures is an \emph{additive} state update. Another way
+of phrasing this is that while the vanilla RNN attempts to learn an opaque function
+\(\vec{h}_t = \mathcal{F}(\vec{x}_t, \vec{h}_{t-1})\), these gated architectures instead learn
+a \emph{residual} mapping \(\vec{h}_t = \mathcal{F}(\vec{x}_t, \vec{h}_{t-1}) + \vec{h}_{t-1}\).
+By itself, this would alleviate the main cause of vanishing gradients 
+\autocite{Jozefowicz2015, Hochreiter1997}. This is equivalent to adding a skip connection,
+allowing the state to skip a time-step and is directly analogous to the residual connections
+now commonly used to address the vanishing gradient problem in very deep feed-forward networks
+\autocite{He2015, Duvenaud2014, Szegedy2016}. Unfortunately the presence of the gate complicates
+this perspective -- this will be analysed in detail in chapter~\ref{C:arch}.
+
 
 \section{Related Work}
 \subsection{Long Time Dependencies}
-Summary of approaches to fix vanishing gradients.
+The key symptom of vanishing gradients in RNNs is that it makes it much harder to learn to
+store information for long time periods \autocite{Bengio1994}. This makes RNNs often struggle to
+solve simple-seeming tasks in which the solution requires remembering an input for many
+time-steps. There are two main categories of solutions to this issue -- architectural and
+algorithmic.
+
+\subsubsection{Architectural Solutions}
+These attempts to solve the problem focus on alleviating the issue by changing the manner in which
+hidden states are calculated. The aforementioned LSTM and GRU are the most widespread, but
+several alternatives have been proposed. 
+An early attempt to solve the problem involves feeding inputs to different units at different
+
+
+A recent architecture of note is the Unitary Evolution RNN
+\autocite{Arjovsky2015} which guarantee the eigenvalues of the recurrent weight matrix have a
+magnitude of one. While this leads to provably non-vanishing or exploding gradients, in
+practice they still seem to struggle to learn to store information for very long time periods.
+This is potentially due to the seemingly ad-hoc composition of unitary operators used to allow
+unconstrained optimization of parameters while maintaining the desired properties of the
+recurrent matrix.
+
+
+
 \subsection{Memory}
 Summary of approaches to augmenting RNNs with extra memory, or other approaches to better
 use memory.
