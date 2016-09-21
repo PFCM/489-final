@@ -90,14 +90,14 @@ propagate it backward in time, leading to a negligible update to the weights.
 then the loss vector is multiplied by \(\mat{W}\) taken to the \((j-i)\)th power. If the largest
 eigenvalue of \(\mat{W}\) is large, then this will cause the gradient to eventually explode.
 If the largest eignevalue is small, then the gradient will vanish. This issue was first presented
-in 1994 \autocite{Bengio1994}, while a thorough treatment including necessary conditions 
+in 1994 \autocite{Bengio1994}, for a thorough treatment including necessary conditions 
 for vanishing and the complementary exploding problem, see \autocite{Pascanu2012}.
 
 In the non-linear case, this remains a serious issue. While exploding gradients are often
 mitigated by using a \emph{saturating} non-linearity so that the gradient tends to zero as the
 hidden states grow, this only exacerbates the vanishing problem. 
 
-A second issue when training RNNs can be illustrated by viewing them as iterated non-linear
+A second issue when training RNNs can be illustrated by viewing them as iterated non-linear	
 dynamical systems and thus susceptible to the ``butterfly effect'': seemingly negligible changes
 in initial conditions can lead to catastrophic changes after a number of iterations
 \autocite{Lorenz1963}. In RNNs this manifests as near-discontinuity of the loss surface
@@ -114,7 +114,7 @@ Recurrent Unit (GRU). Both of these belong to a class of \emph{gated} RNNs, whic
 completely novel method of computing a new state.
 
 The LSTM was proposed to alleviate the vanishing gradient problem. It computes a new state
-in a fundamentally different manner
+in a fundamentally different manner, computed
 
 \section{Related Work}
 \subsection{Long Time Dependencies}
