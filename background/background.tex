@@ -180,20 +180,64 @@ These attempts to solve the problem focus on alleviating the issue by changing t
 hidden states are calculated. The aforementioned LSTM and GRU are the most widespread, but
 several alternatives have been proposed. 
 An early attempt to solve the problem involves feeding inputs to different units at different
+rates. The primary motivation for this seems to be to force the network to attend to longer
+time-scales by passing some parts of it information at a slower rate, although the authors note an
+intuition that more abstract representations of the sequence will change slower and hence not
+require re-calculation at every step \autocite{Hihi1995}. This idea has been revisited recently in
+the form of the Clockwork RNN \autocite{Koutnik2014} which flattens the network, simply forcing
+the various hidden states to be updated at different predefined rates. Further approaches in this
+direction attempt to have the network learn the time scale at which it should update -- recent
+examples include Hierarchical Multiscale RNNs \autocite{Chung2016} and Gated Feedback RNNs
+\autocite{Chung2015} which suggest various ways of connecting, via additional gated connections,
+the outputs of various layers in a stacked RNN architecture.
 
+These approaches have been successful, although it is not precisely clear how adding extra
+multiplicative gates could alleviate the vanishing gradient problem. Secondly, many of these
+approaches add significant extra structures to the network (typically a large LSTM)
+to force it to behave in a manner which
+it was already capable of. That significant extra structures need to be added to able to reliably
+train it to express such behaviours seems to suggest that a more fundamental change in the model
+would be wise.
 
-A recent architecture of note is the Unitary Evolution RNN
+A simpler recent architecture of note is the Unitary Evolution RNN
 \autocite{Arjovsky2015} which guarantee the eigenvalues of the recurrent weight matrix have a
 magnitude of one. While this leads to provably non-vanishing or exploding gradients, in
 practice they still seem to struggle to learn to store information for very long time periods.
 This is potentially due to the seemingly ad-hoc composition of unitary operators used to allow
-unconstrained optimization of parameters while maintaining the desired properties of the
+unconstrained optimisation of parameters while maintaining the desired properties of the
 recurrent matrix.
 
+Another line of enquiry which can help with long time-dependencies focuses on the initialisation
+of the network. IRNNs \autocite{Le2015}, which simply initialise the recurrent weights matrix to the
+ identity (presaged by the nearly diagonal initialisation in \autocite{Mikolov2015}), perform
+remarkably well on pathological tasks. The importance of the initialisation of the recurrent weights
+matrix was further emphasised in \autocite{Henaff2016} where marked differences were found between
+initialising a slightly modified vanilla RNN with the identity matrix or a random orthogonal matrix.
+While simply initialising the network to have certain beneficial properties provides no guarantees
+on final performance after training, it is important to note the significant results reported
+especially as they are likely to at least be partially transferable to any given architecture.
+
+\subsubsection{Algorithmic Solutions}
+The second class of attempts to address the issue focuses on techniques for training the network
+that help overcome the problems with the gradients. The first of this is to use approximate
+second-order methods to try and rescale the gradients appropriately. A number of notable attempts
+used Hessian-Free Optimization \autocite{Martens2011, Boulanger-Lewandowski2012} and achieved
+remarkable results. Perhaps more interestingly, it was subsequently found that many of the results
+could in fact be achieved with very careful tuning of standard stochastic gradient descent with
+momentum and careful initialisation \autocite{Sutskever2013a}.
+
+Another interesting approach which seems to help learn networks learn tasks requiring longer time
+dependencies is to add a regularisation term into the loss to penalise the difference between
+successive hidden states \autocite{Krueger2016}. This encourages the network to learn smooth
+transitions and may help it ``bootstrap'' itself past the vanishing gradients.
 
 
 \subsection{Memory}
-Summary of approaches to augmenting RNNs with extra memory, or other approaches to better
-use memory.
+Something about using memory, needing to add extra memory/weird ways of using it to make LSTMs et al.
+do cool stuff. Repeat observation that having to go to all this trouble indicates the LSTM is the
+issue.
+
 \subsection{Tensors in Neural Networks}
 Including gated networks, MRNN and so on.
+
+\printbibliography
