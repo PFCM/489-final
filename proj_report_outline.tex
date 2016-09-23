@@ -106,7 +106,10 @@
 \usepackage{bm}
 
 % theorem-like environments
-\newtheorem{prop}{Proposition}
+\newtheorem{prop}{Proposition}[section]
+\newtheorem{thm}{Theorem}
+\newtheorem{lem}{Lemma}[section]
+\newtheorem{cor}{Corollary}[thm]
 
 % tensor/vector/matrix commands
 \renewcommand\vec{\mathbf}
@@ -114,8 +117,12 @@
 \newcommand{\tensor}[1]{\bm{\mathcal{#1}}}
 \newcommand*{\midbullet}{\raisebox{-0.25ex}{\scalebox{1.2}{$\cdot$}}}
 \DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\matr}{mat}
+\DeclareMathOperator{\vect}{vec}
+\newcommand{\tran}[1]{#1^{\mkern-1.5mu\mathsf{T}}}
 
 \usepackage{hyperref}
+\usepackage{soul}
 
 
 % You should specifiy your supervisor here with
