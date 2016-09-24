@@ -89,6 +89,39 @@ we are concerned with, this leads to the following notation:
 	\label{eq:bilinearkolda2}
 \end{align}
 
+\begin{figure}
+	\centering
+	\begin{subfigure}[t]{0.45\textwidth}
+	\centering
+	\begin{tikzpicture}
+		\draw (0,0) node {} -- (-1,0);
+	\end{tikzpicture}
+	\caption{Vector \(\vec{a}\in\mathbb{R}^{n_1}\)}\label{fig:tnd:vec}
+	\end{subfigure} ~
+	\begin{subfigure}[t]{0.45\textwidth}
+	\centering
+	\begin{tikzpicture}
+		\draw (1,0) -- (0,0) node {} -- (-1,0);
+	\end{tikzpicture}
+	\caption{Matrix \(\mat{B}\in\mathbb{R}^{n_1 \times n_2}\)}\label{fig:tnd:mat}
+	\end{subfigure} \\
+	
+	\begin{subfigure}[t]{0.5\textwidth}
+	\centering
+	\begin{tikzpicture}
+		\draw (0,0) node {}
+			\foreach \x in {0,90,180}
+			{
+				(\x:1) -- (0,0)
+			};
+	\end{tikzpicture}
+	\caption{Three-way tensor 
+		\(\tensor{C}\in\mathbb{R}^{n_1\times n_2\times n_3}\)}\label{fig:tnd:3ten}
+	\end{subfigure}
+	\caption{Example tensor network diagrams.}
+	\label{fig:tnegs}
+\end{figure}
+
 When \(\tensor{W}\) is a three-way tensor, we prefer a more compact notation
 \begin{equation}\label{eq:bilintensor}
 	\vec{z} = \tran{\vec{x}}\tensor{W}\vec{y}.
@@ -100,6 +133,70 @@ equation~\eqref{eq:bilinearkolda2}. With either notation, for a tensor
 \(\tensor{W} \in \mathbb{R}^{n_1 \times n_2 \times n_3}\), we must have that 
 \(\vec{x}\in \mathbb{R}^{n_1}\), \(\vec{y} \in \mathbb{R}^{n_3}\) and the result 
 \(\vec{z}\in\mathbb{R}^{n_2}\).
+
+An intuitive way to illustrate these ideas is using Tensor Network Diagrams
+\autocite{Cichocki2016, Orus2014}. In these diagrams, each object is represented
+as a circle, with each free `arm' representing an index used to address elements.
+A vector therefore has one free arm, a matrix two and so on. Scalars will have
+no arms. Figure~\ref{fig:tnegs} has examples for these simple objects. 
+
+Where these diagrams are especially useful is for representing contractive products
+where we sum over the range of a shared index. We represent this by joining the
+respective arms. As an example, a matrix-vector product \(\vec{y} = \mat{Ax}\)
+has such a contraction: \(y_{i} = \sum_{j}A_{ij}x_{j}\). This is shown in
+figure~\ref{fig:tnmatvec} -- it is clear that there is only a single arm, so the
+result is a vector as it should be. Figure~\ref{fig:tnprods} shows some examples
+of these kinds of products.
+
+\begin{figure}
+	\centering
+	\begin{subfigure}[t]{0.45\textwidth}
+		\centering
+		\begin{tikzpicture}
+			\draw
+				(1,0) node{} -- (0,0) node {} -- (-1,0);
+		\end{tikzpicture}
+		\caption{Matrix-vector product \(\mat{A}\vec{y}\), one free arm indicates
+		 the result is a vector.}
+		 \label{fig:tnmatvec}
+	\end{subfigure} ~
+	\begin{subfigure}[t]{0.45\textwidth}
+		\centering
+		\begin{tikzpicture}
+			\draw
+				(1,0) node{} -- (0,0) node {} -- (-1,0) node{};
+		\end{tikzpicture}
+		\caption{Vector-matrix-vector bilinear form \(\tran{\vec{x}}\mat{A}
+				 \vec{y}\). No free arms so the result is a scalar.}
+	\end{subfigure}\\
+	\begin{subfigure}[t]{0.45\textwidth}
+		\centering
+		\begin{tikzpicture}
+			\draw (0,0) node {}
+				\foreach \x in {0,90,180}
+				{
+					(\x:1) -- (0,0)
+				}
+				(0:1) node{};
+		\end{tikzpicture}
+		\caption{Tensor-vector product produces a matrix.}
+	\end{subfigure} ~
+	\begin{subfigure}[t]{0.45\textwidth}
+		\centering
+		\begin{tikzpicture}
+			\draw (0,0) node {}
+				\foreach \x in {0,90,180}
+				{
+					(\x:1) -- (0,0)
+				}
+				(0:1) node{}
+				(180:1) node{};
+		\end{tikzpicture}
+		\caption{Vector-tensor-vector product produces a vector.}
+	\end{subfigure}
+	\caption{Various products expressed as Tensor Network Diagrams.}
+	\label{fig:tnprods}
+\end{figure}
 
 \section{Bilinear Products}
 There are several ways to describe the operation performed by the bilinear products we are
