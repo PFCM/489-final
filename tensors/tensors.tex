@@ -29,8 +29,8 @@ while scalars will be standard lower case letters. Commonly we will need to addr
 substructures of tensors. This is analogous to pulling out individual rows or columns of a matrix.
 To perform this we fix some of the indices to specific values and allow the remaining indices to vary
 across their range. We denote by \(\midbullet\) the indices allowed to vary, the rest will be provided
-with a specific value. For example, a single row of a matrix \(\mat{A}\) would be denoted 
-\(\mat{A}_{i\midbullet}\).
+with a specific value. For example, \(\mat{A}_{i \midbullet}\) would denote the \(i\)-th row of the
+matrix \(\mat{A}\).
 For three-way tensors we refer to the vector elements produced by fixing two indices as 
 \emph{threads}. It is also possible to form matrices by fixing only one index -- we refer to these
 as \emph{slices}. Table~\ref{tab:notation} provides examples of the possibilities.
@@ -73,7 +73,10 @@ in \(\mathbb{R}^m\)), then
 as taking all of the vectors formed by fixing the first index of \(\mat{A}\) while allowing the second
 to vary and computing their inner product with \(\vec{x}\). To perform the same operation using the
 columns of \(\mat{A}\) we need to fix the second index, the would typically be done by exchanging the
-order: \(\tran{\vec{x}}\mat{A}\).
+order: \(\tran{\vec{x}}\mat{A}\). This kind of operation is sometimes referred to as a
+\emph{contractive} product, especially in the physical sciences \autocite{Orus2014}. This name
+arises because we form the output by joining a shared dimension (by elementwise multiplication) and
+contracting it with a sum.
 
 We can generalise the operation to tensors: choose an index over which to perform the product,
 collect every thread formed by fixing all but that one index and compute their inner product with the
@@ -144,7 +147,7 @@ Where these diagrams are especially useful is for representing contractive produ
 where we sum over the range of a shared index. We represent this by joining the
 respective arms. As an example, a matrix-vector product \(\vec{y} = \mat{Ax}\)
 has such a contraction: \(y_{i} = \sum_{j}A_{ij}x_{j}\). This is shown in
-figure~\ref{fig:tnmatvec} -- it is clear that there is only a single arm, so the
+figure~\ref{fig:tnmatvec} -- it is clear that there is only a single free arm, so the
 result is a vector as it should be. Figure~\ref{fig:tnprods} shows some examples
 of these kinds of products.
 
@@ -193,6 +196,7 @@ of these kinds of products.
 				(180:1) node{};
 		\end{tikzpicture}
 		\caption{Vector-tensor-vector product produces a vector.}
+		\label{fig:vanillabilintnd}
 	\end{subfigure}
 	\caption{Various products expressed as Tensor Network Diagrams.}
 	\label{fig:tnprods}
@@ -232,7 +236,7 @@ is positive, the two vectors are pointing in a similar direction and if it is ne
 are in opposite directions. If it is exactly zero, they must be orthogonal. The dot product
 therefore provides us with some notion of the similarity between two vectors.
 Indeed if we normalise the vectors by dividing each component by their \(l_2\) norm we
-recover exactly the cosine similarity widely used, especially in information retrieval 
+recover exactly the widely used cosine similarity, common in information retrieval 
 \autocite{Singhal2001, Tan2006} . Note that
 we can generalise this idea by inserting a matrix of (potentially learned)
 weights \(\mat{U}\) which enables us
@@ -276,7 +280,7 @@ of one vector choosing a matrix for the other vector, we can always achieve the 
 intuition after switching the vectors, give or take some transposes.
 
 This interpretation is very clear from the expression of the product in
-equation~\ref{eq:bilinearkolda}. Simply by inserting parentheses we observe that we are
+equation~\\eqref{eqref{eq:bilinearkolda}. Simply by inserting parentheses we observe that we are
 first generating a matrix in a way somehow dependent on the first input and multiplying
 the second input by that matrix. In this sense we allow one input to choose patterns to look for
 in the other input.
@@ -394,7 +398,7 @@ follows:
 \begin{proof}
 To
 prove this we can compare the expressions for a single element of the result.
-An element \(z_j\) from equation~\ref{eq:bilinearouter}
+An element \(z_j\) from equation~\eqref{eq:bilinearouter}
 is formed as the inner product of the \(j\)-th
 row of the flattened tensor and the vectorised outer product of the inputs. By 
 lemma~\ref{lem:matricise}:
@@ -458,8 +462,155 @@ By corollary~\ref{cor:and} this quadratic tensor form would implicitly and natur
 additional conjunctive feature and be capable of solving the exclusive or problem without hidden
 layers or hand-engineered features.
 
+Secondly, this captures the notion that the bilinear tensor product operates implicitly on higher
+level features, constructed by combining both inputs. This indicates that it is capable of capturing
+complex relationships between the two inputs.
+
 \section{Tensor Decompositions}
+The ultimate goal is to learn the tensor that parameterises a bilinear product. Unfortunately
+such a tensor is often very large; an \(n \times n \times n\) would require \(O(n^3)\) space
+to store explicitly. Further,
+it is highly likely that we will be looking to model simpler interactions than the full tensor
+might represent. This leads to the idea of a parameterised decomposition -- an ideal solution
+would be a method of representing the tensor with some way of specifying the complexity of the
+bilinear relationship and hence making explicit the relationship between the number of parameters
+required and the expressive power of the model. 
+
+We will investigate two methods of tensor decomposition with a view towards their use as a building
+block for neural networks. The outcomes we wish to evaluate are: the savings in storage, how
+convenient it is to specify the number of parameters, convenience and efficiency of implementation
+(in terms of matrix operations) and whether the gradients suggest any benefits or hindrances when
+learning by gradient descent. There is a significant amount of research into tensor decompositions,
+\autocite{Kolda2009} provides a thorough review. Here we consider some of the most general
+decompositions and families of decompositions without going into detail outside of where it is
+relevant to the above concerns.
+
 \subsection{CANDECOMP/PARAFAC}
+This method of decomposing a tensor dates as far back as 1927 
+\autocite{Hitchcock1927, Hitchcock1928} and was rediscovered repeatedly across a range of
+communities over the next 50 years \autocite{Kolda2009}. First referred to as `polyadic
+form of a tensor' we refer to it as the CP-decomposition after two prominent publications in
+1970 referring to the technique as `canonical decomposition' (CANDECOMP) \autocite{Carroll1970}
+ or `parallel factors' (PARAFAC) \autocite{Harshman1970}. 
+ It is a fairly straightforward
+extension of a matrix rank decomposition to the more general case, representing a tensor as
+a sum of rank one tensors. This section contains a formal description of the three-way case
+as well as a note on computing bilinear products with the decomposed tensor.
+Some interesting results on the uniqueness of the decompositions can be found in \autocite{Kolda2009},
+but they are not relevant to the discussion here.
+
+\subsubsection{Description}
+Given a three-way tensor \(\tensor{X} \in \mathbb{R}^{n_1 \times n_2 \times n_3}\) we wish to 
+approximate it as
+\begin{equation}\label{eq:cp-statement}
+	\tensor{X} \approx \sum_{r=1}^{R} \vec{a}_r \otimes \vec{b}_r \otimes \vec{c}_r
+\end{equation}
+ where \(R\) is the rank of the decomposition and \(\cdot \otimes \cdot\) denotes the tensor
+product. This product expands the dimensions; for the first two vectors it is the outer product
+\(\vec{a}\tran{\vec{b}}\) which generates a matrix consisting of the product of each pair of
+elements in \(\vec{a}\) and \(\vec{b}\). With three such products we proceed analogously, except
+now our structure must contain the product of each possible triple of elements. Hence we need
+three indices to address each entry, so it best described as a three-way tensor. Each individual
+element has the form
+\begin{equation}\label{eq:cp-element}
+	X_{ijk} = \sum_{r=1}^R a_{ri}b_{rj}c_{rk}.
+\end{equation}
+
+It is convenient to stack these factors into matrices --
+we differ slightly from \autocite{Kolda2009} by defining the \textit{factor matrices} of the 
+form \(\mat{A} = [\vec{a}_1\;\vec{a}_2\;\cdots\;\vec{a}_R]^{\mathsf{T}} \in 
+\mathbb{R}^{R\times n_1}\) (and equivalently for
+\(\mat{B}\) and \(\mat{C}\)) such that the  \textit{rows} of the matrix correspond to the
+\(R\) vectors. 
+We denote a tensor decomposed in this format 
+\(\tensor{X} = [\mat{A}, \mat{B}, \mat{C}]_{CP}\).
+
+\subsubsection{Bilinear Product}
+We wish to compute a product of the form \(\vec{z} = \tran{\vec{x}}\tensor{W}\vec{y}\)
+where \(\tensor{W} = [\mat{A}, \mat{B}, \mat{C}]_{CP}\) is represented as a CP-decomposition.
+Conveniently, this can be done with simple matrix products.
+
+\begin{prop} \label{prop:cpbilin}
+\begin{align}
+	\vec{z} &= \tran{\vec{x}}\tensor{W}\vec{y} \\
+			&= \tran{\mat{B}}(\mat{A}\vec{x} \odot \mat{C}\vec{y})
+\end{align}
+when \(\tensor{W} = [\mat{A}, \mat{B}, \mat{C}]_{CP}\) and \(\odot\) represents the Hadamard
+(elementwise) product.
+\end{prop}
+\begin{proof}
+This follows from straightforward rearranging. Firstly
+\begin{align}
+	z_j &= \sum_{i}^{n_1} \sum_k^{n_3} W_{ijk} x_i y_k \\
+		&= \sum_{i}^{n_1} \sum_k^{n_3} \sum_r^R A_{ri} B_{rj} C_{rk} x_i y_k\\\label{eq:cpbilin-one}
+		&= \sum_r^R B_{rj} \left( \sum_i^{n_1} A_{ri} x_i \cdot \sum_k^{n_3} C_{rk}y_k \right).
+\end{align}
+This implies we can compute the quantity inside the brackets for all \(r\) at once simply
+by \(\mat{A}\vec{x} \odot \mat{C}\vec{y}\) which results in a length \(R\) vector. 
+Equation~\eqref{eq:cpbilin-one} then notes that for each output \(j\) we take the \(j\)-th column
+of the \(R \times n_2\) factor matrix \(\mat{B}\) and perform a dot product with our earlier
+result. A series of dot products can be easily expressed with matrix multiplication, noting
+that we have to transpose \(\mat{B}\) to keep it on the left but still sum over each column.
+Hence:
+\begin{equation}
+	\vec{z} = \mat{B}^\mathsf{T} (\mat{A}\vec{x} \odot \mat{C}\vec{y}).
+\end{equation}
+\end{proof}
+
+While the decomposition itself is challenging to express as a Tensor Network Diagram due to the
+tensor products, we can express the bilinear product above. This is presented in 
+figure~\ref{fig:cpbilintnd}, which can be compared to figure~\ref{fig:vanillabilintnd}.
+
+\begin{figure}
+	\centering
+		\begin{tikzpicture}
+			\draw (0,0) node {}
+				\foreach \x in {0,90,180}
+				{
+					(\x:1) -- (0,0)
+				}
+				(0:1) node [label=below:{\(\vec{x}\)}] {}
+				(180:1) node [label=below:{\(\vec{y}\)}] {};
+		\end{tikzpicture}
+		\caption{Vector-tensor-vector product produces a vector.}
+		\label{fig:cpbilintnd}
+\end{figure}
+
+
+\subsubsection{Gradients}
+As the final aim is to attempt to learn the coefficients of the decomposition using gradient
+descent, it makes sense to check that the gradients of the parameters are well-behaved
+with respect to the output of the bilinear product. We break the gradient into three parts,
+one for each of the parameter matrices. \hl{do this properly}
+
+Let \(\vec{z}\) be defined as above.
+The gradient of \(\vec{z}\) with respect to \(\mat{A}\) has entries of the form:
+\begin{align}
+	\frac{\partial z_j}{\partial A_{lm}} &= x_m \cdot \sum_k^{n_3}C_{lk}y_k \\
+		&= x_m \cdot \vec{C}_{l\midbullet}^\mathsf{T}\vec{y}.\\
+\intertext{The gradients with respect to \(\mat{C}\) have the same form:}
+	\frac{\partial z_j}{\partial C_{lm}} &= y_m \cdot \sum_i^{n_1}A_{li}x_i \\
+		&= y_m \cdot \vec{A}_{l\midbullet}^\mathsf{T}\vec{x}.\\
+\intertext{The gradient of the final parameter matrix \(\mat{B}\) has entries}
+	\frac{\partial z_j}{\partial B_{lm}} &= 
+		\mathbb{I}_{m = j} \cdot \left( \mat{A}\vec{x} \odot \mat{C}\vec{y}\right)
+\end{align} where \(\mathbb{I}_{m=j}\) denotes the indicator function that is one if
+\(i = j\) and zero otherwise.
+This has the
+curious effect that the gradient of the product with respect to \(\mat{B}\) is the same for all
+columns of \(\mat{B}\). While this seems like it may hinder learning, in practice there
+will be additional terms due to the loss function which ameliorate this.
+
+
+\subsubsection{Storage Requirements}
+The number of stored coefficients for a rank \(R\) CP-decomposed tensor of size 
+\(I \times J \times K\) will be \(RI + RJ + JK\). Explicitly storing the tensor would require
+\(IJK\) numbers to be stored. To illustrate the significance of this, consider the case when
+the tensor being decomposed has all dimensions and rank of equal size. Denoting the size as
+\(I\), then the explicit tensor will have an \(I^3\) storage requirement while the decomposed
+tensor needs only \(3I^2\).
+
+
 \subsection{Tensor Train, Tucker}
 
 \section{Learning decompositions by gradient descent}
