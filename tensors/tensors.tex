@@ -557,23 +557,41 @@ Hence:
 \end{equation}
 \end{proof}
 
-While the decomposition itself is challenging to express as a Tensor Network Diagram due to the
-tensor products, we can express the bilinear product above. This is presented in 
+We can express the bilinear product above as a tensor network diagram, although we have to insert
+an auxiliary \(R\times R\times R\) tensor, denoted \(\tensor{I}_{R}\) which is defined as
+\begin{equation}\label{eq:tensoridentity}
+	I_{ijk} = \begin{cases}
+		1 & \mathrm{if} \; i=j=k \\
+		0 & \mathrm{otherwise}
+	\end{cases}
+\end{equation} in a manner analogous to the identity matrix. Taking a bilinear product with this
+tensor simply represents elementwise multiplication of the two vectors. In the diagram this is
+represented with the symbol
+\rotatebox[origin=c]{-180}{\(\oslash\)} to emphasise the diagonality (and to emphasise that it
+it is different as we do not need to store its parameters).
+This is presented in 
 figure~\ref{fig:cpbilintnd}, which can be compared to figure~\ref{fig:vanillabilintnd}.
 
 \begin{figure}
 	\centering
-		\begin{tikzpicture}
-			\draw (0,0) node {}
-				\foreach \x in {0,90,180}
-				{
-					(\x:1) -- (0,0)
-				}
-				(0:1) node [label=below:{\(\vec{x}\)}] {}
-				(180:1) node [label=below:{\(\vec{y}\)}] {};
+		\begin{tikzpicture}[scale=0.75]
+			\node (0,0) [forbidden sign, 
+						 rotate=180, 
+						 draw, fill=none, label=above:{\(\tensor{I}\)}] (I) {};
+			\draw
+				(-2,0) node[label=below:{\(\vec{x}\)}]{}
+				 -- (-1,0) node[label=below:{\(\mat{A}\)}]{}
+				 -- (I)
+				(2,0) node[label=below:{\(\vec{y}\)}]{}
+				 -- (1,0) node[label=below:{\(\mat{C}\)}]{}
+				 -- (I)
+				(I) --
+				(0,1) node[label=right:{\(\mat{B}\)}]{}
+				 -- (0,2)
+			;
 		\end{tikzpicture}
-		\caption{Vector-tensor-vector product produces a vector.}
-		\label{fig:cpbilintnd}
+	\caption{One way of representing a bilinear product in the CP-decomposition.}
+	\label{fig:cpbilintnd}
 \end{figure}
 
 
@@ -611,7 +629,104 @@ the tensor being decomposed has all dimensions and rank of equal size. Denoting 
 tensor needs only \(3I^2\).
 
 
-\subsection{Tensor Train, Tucker}
+\subsection{Tensor Train}
+The \emph{tensor-train} decomposition has a much shorter history -- it was first proposed in
+2011 as a simpler way of representing a slightly earlier tree based form derived from a
+generalisation of the singular value decomposition \autocite{Osedelets2011}. It is proposed
+as an alternative to the CP-decomposition which purportedly provides benefits in terms of
+numerical stability. It has been used to learn compressed weight matrices in large neural
+networks \autocite{Novikov} suggesting it is a prime candidate to learn with gradient descent.
+
+\subsubsection{Description}
+The tensor-train decomposition (TT-decomposition) of a general tensor \(\tensor{X}\) with
+\(d\) indices is the tensor \(\tensor{Y} \approx\tensor{X}\) with elements expressed as a
+product of slices of three-way tensors (so a product of matrices):
+\begin{equation}
+			\label{eq:tensortrain_full}
+	{Y}_{i_1i_2\dots i_d} 
+		= \mat{G}[1]_{\midbullet i_1 \midbullet}\mat{G}[2]_{\midbullet i_2 \midbullet}
+			\cdots \mat{G}[d]_{\midbullet i_d \midbullet}.
+\end{equation}
+If dimension \(j\) is of size \(n_j\), then \(\tensor{G}[j]\) is size 
+\(r_{j-1} \times n_j \times r_{j}\) so that each slice \(\mat{G}[j]_{\midbullet i \midbullet}\)
+is size \(r_{j-1} \times r_{j}\). The collection of \(r_i\) is the `tt-rank' of the
+decomposition and controls the number of parameters. In order to make the result of the chain
+of matrix products a scalar, we have to ensure \(r_0 = r_d = 1\) \autocite{Osedelets2011}.
+
+The three-way case presents no obvious simplifications from the general case but we present it
+here to ensure consistent notation through the remainder of this section. The TT-decomposition
+of a three-way tensor of size \(I \times J \times K\) has three `cores' with shapes
+\(1 \times I \times r_1\), \(r_1 \times J \times r_2\) and \(r_2 \times K \times 1\). For
+convenience, we can treat these as a matrix, a three-way tensor and a matrix by ignoring 
+dimensions of size one. This leads to the following expression of 
+equation~\ref{eq:tensortrain_full} where \(\tensor{W}\) is the three way tensor in its
+decomposed form:
+\begin{equation} \label{eq:tensortrain_three}
+	W_{ijk} = \mat{A}_{i\midbullet} \mat{B}_{\midbullet j \midbullet} \mat{C}_{\midbullet k}.
+\end{equation} In a manner consistent with the CP-decomposition we denote such a decomposed
+tensor \(\tensor{W} = [\mat{A},\tensor{B},\mat{C}]_{TT}\). It is important to note that the
+shapes are less consistent: \(\mat{A}\) is an \(I \times r_1\) matrix, \(\tensor{B}\) a
+\(r_1 \times J \times r_1\) tensor and \(\mat{C}\) an \(r_2 \times K\) matrix.
+
+\subsubsection{Bilinear Product}
+Computing a bilinear product between two vectors and a tensor in the TT-decomposition does not
+have quite such an efficient form as the CP-decomposition. Primarily this is due to the presence
+of the three-way tensor \(\tensor{B}\), which means we are still eventually computing a full
+tensor product, albeit involving a smaller tensor. We denote the product as
+\begin{equation} \label{eq:tt_bilin}
+	\vec{z} = \vec{x}^\mathsf{T}\mat{A}\tensor{B}\mat{C}\vec{y}.
+\end{equation} For a specific index this has the form
+\begin{align} \label{eq:tt_bilin_index}
+	z_j &= \vec{x}^\mathsf{T}\vec{A}\mat{B}_{\midbullet j \midbullet}\mat{C}\vec{y}\\
+		&= \sum_{i=1}^{I}\sum_{k=1}^K\sum_{m=1}^{r_1}\sum_{n=1}^{r_2}A_{im}B_{mjn}C_{nk}x_iy_k.
+\end{align}
+
+This provides a clear intuition about what the TT-decomposition is doing in the three-way case.
+Matrices \(\mat{A}\) and \(\mat{C}\) project the inputs into a new (potentially smaller) space
+where the bilinear product is carried out with \(\tensor{B}\) ensuring the result has been pushed
+back to the appropriate size.
+
+
+\subsubsection{Gradients}
+In the TT-decomposition the gradients are very similar.
+The gradient of \(\vec{z}\) with respect to \(\mat{A}\) has entries of the form:
+\begin{align}
+	\frac{\partial z_j}{\partial A_{lm}} 
+		&= x_l \cdot \left(\vec{B}_{mj\midbullet}^\mathsf{T}\mat{C}\vec{y}\right). \\
+\intertext{The components of the gradient with respect to \(\mat{C}\) have a similar form:}
+	\frac{\partial z_j}{\partial C_{ml}} 
+		&= y_l \cdot \left(\vec{B}_{\midbullet jm}^\mathsf{T}\mat{A}\vec{x}\right). \\
+\intertext{While the gradient of the elements of \(\tensor{B}\) behave surprisingly similarly
+	to the CP-decomposition:}
+	\frac{\partial z_j}{\partial B_{lmn}} 
+		&= \mathbb{I}_{m = j} \cdot \left( \mat{A}\vec{x} \odot \mat{C}\vec{y}\right).
+\end{align}
+
+
+\subsection{Comparison}
+In this section we first prove a result on the conditions required for the decompositions to
+be equivalent. This is followed by a brief discussion of the theoretical differences and
+similarities between the two decompositions and whether we can draw any conclusions about their
+suitability for the task at hand. 
+
+It is also worth noting briefly that the gradients are very nearly equivalent. This implies
+that attempting to learn the parameters directly using gradient descent should work for both
+or neither, since it seems reasonable to expect similar dynamics.
+
+\subsubsection{Equivalence}
+One condition for the tensor-train to be equivalent to the CP-decomposition is if the central
+tensor in the TT-decomposition has diagonal, square slices. Intuitively this reduces the tensor
+product to a matrix product. To the best of our knowledge this result has not been presented 
+elsewhere. It can be found in the appendix, proposition~\ref{prop:equiv}.
+
+\subsubsection{Space Requirements}
+The CP-decomposition is appealing because it has a single hyper-parameter \(r\). Further, the
+storage of a CP-decomposed tensor is linear in \(r\). By comparison the TT-decomposition has
+two parameters and the total storage requirement grows linearly in their product. This makes
+choosing the parameter potentially easier with the CP-decomposition. If we take the easy option
+and set both ranks of the TT-decomposition to the same value, then the number of elements is
+proportional to the square of that value. As the rank has to be an integer, this potentially gives
+us fewer feasible options.
 
 \section{Learning decompositions by gradient descent}
 Multiplicative dynamics = instability?
