@@ -413,7 +413,7 @@ as described in lemma~\ref{lem:matricise} we
 derive
 \begin{align}
 	z_j &= \sum_{i=1}^{n_1}\sum_{k=1}^{n_3} W_{ijk} x_i y_k \\
-		&= \vec{x}^\mathsf{T}\mat{W}_{\midbullet j \midbullet}\vec{y}
+		&= \tran{\vec{x}}\mat{W}_{\midbullet j \midbullet}\vec{y}
 \end{align}
 
 \end{proof}
@@ -421,9 +421,9 @@ derive
 
 Therefore to understand the bilinear product it helps to understand the matrix 
 \(\vec{y}\vec{x}^\mathsf{T}\). Each element is of the following form:
-\[
+\begin{equation}
 	(\vec{y}\vec{x}^\mathsf{T})_{ki} = x_iy_k,
-\] it contains all possible products of pairs of elements, one from each vector. 
+\end{equation} it contains all possible products of pairs of elements, one from each vector. 
 This captures some interesting interactions.
 
 \begin{thm} [Bilinear exclusive-or] \label{thm:xor}
@@ -451,6 +451,7 @@ either or both are \(0\) then their product must be zero. Following the same str
 of theorem~\ref{thm:xor}, for binary inputs we must have this conjunctive relationship.
 \end{proof}
 
+\subsubsection{Remarks on theorem~\ref{thm:xor}}
 There are a number of remarks worth making about these results. Firstly they suggest considering
 the case where both inputs are the same: \(\vec{z} = \tran{\vec{x}}\tensor{W}\vec{x}\). Replacing
 bilinear forms with quadratic forms may invalidate some of the similarity based interpretations,
@@ -465,6 +466,39 @@ layers or hand-engineered features.
 Secondly, this captures the notion that the bilinear tensor product operates implicitly on higher
 level features, constructed by combining both inputs. This indicates that it is capable of capturing
 complex relationships between the two inputs.
+
+Finally we will point out that this gives an indication of what we term the `apparent depth' of the
+tensor product. While it has long been known that neural networks with a single hidden layer and
+appropriate non-linearity (and therefore two weight matrices)
+ are universal function approximators \autocite{Hornik1989}, recent results
+have suggested that the depth of the network is important in keeping the number of parameters
+bounded \autocite{Eldan2016, Telgarsky2016}. In particular, Eldan and Shamir show that for a
+particular class of radial basis-like functions (which depend only on the squared norm of the input)
+there exist networks with two hidden layers and a number of nodes polynomial in the input dimension
+which can perfectly approximate the function. They then show that a shallower network with a single
+hidden layer can only perfectly approximate the function with a number of nodes exponential in the
+input dimension \autocite{Eldan2016}.
+
+Eldan and Shamir's proof constructs a three-layer network in the following manner:
+for an input \(\vec{x}\), the first two layers learn to approximate the map 
+\(\vec{x}\to ||x||^2_2 = \sum_i x_i^2\) while the final layer learns a univariate function on the
+squared norm \autocite{Eldan2016}.
+ 
+It is straightforward to see that a quadratic tensor layer as discussed above could compute the
+squared norm. Consider the product \(\tran{\vec{x}}\tensor{W}\vec{x}\) and let 
+\(\tensor{W} = [\mat{A},\mat{B},\mat{C}]_{CP}\) be represented in the CP-decomposition with
+rank \(d\), where \(d\) is also the size of the inputs. Then if we let 
+\(\mat{A}=\mat{C}=\mat{I}_d\) and \(\mat{B}\) be a \(d \times 1\) vector of ones,
+we have
+\begin{align}
+	\tran{\vec{x}}\tensor{W}\vec{x} 
+	&= \tran{\mat{B}}\left(\mat{A}\vec{x} \odot \mat{C}\vec{x}\right)\\
+	&= \tran{\vec{1}}(\vec{x} \odot \vec{x})\\
+	&= \sum_{i=1}^d x_i^2 = ||\vec{x}||^2_2.
+\end{align} Thus we can compute the squared norm with only a single tensor layer, while it requires
+two standard layers. This is a useful intuition: using tensors in a neural network allows us to
+limit the number of hidden layers while maintaining much of the expressive power and polynomial
+parameters.
 
 \section{Tensor Decompositions}
 The ultimate goal is to learn the tensor that parameterises a bilinear product. Unfortunately
@@ -629,13 +663,26 @@ the tensor being decomposed has all dimensions and rank of equal size. Denoting 
 tensor needs only \(3I^2\).
 
 
-\subsection{Tensor Train}
+\subsection{Tensor Train, Tucker}
 The \emph{tensor-train} decomposition has a much shorter history -- it was first proposed in
-2011 as a simpler way of representing a slightly earlier tree based form derived from a
+2011 as a simpler way of representing a slightly hierarchical form derived from a
 generalisation of the singular value decomposition \autocite{Osedelets2011}. It is proposed
 as an alternative to the CP-decomposition which purportedly provides benefits in terms of
 numerical stability. It has been used to learn compressed weight matrices in large neural
 networks \autocite{Novikov} suggesting it is a prime candidate to learn with gradient descent.
+In the three-way case it is nearly equivalent to the more venerable Tucker decomposition
+\autocite{Tucker1966}. The tensor train turns out to be simpler so beyond showing the similarity,
+we consider primarily the tensor train.
+
+It is also important to note that the tensor-train can be used more creatively. In \autocite{Novikov}
+Novikov et al. use the decomposition to compress the final layers of a large convolutional neural
+network by reshaping the matrices into high dimensional tensors. The reduction in parameters for
+the tensor-train is most notable with particularly high-dimensional tensors, so this approach allows
+for significant compression. They also show methods of computing the required matrix vector products
+without having to expand the tensor. While this approach is highly successful, the implementation
+(especially of back-propagation) is somewhat involved and it admits a very large number of ways of
+applying the decomposition. To keep our search space of decompositions feasible, we limit to standard
+application of the tensor-train.
 
 \subsubsection{Description}
 The tensor-train decomposition (TT-decomposition) of a general tensor \(\tensor{X}\) with
@@ -655,8 +702,8 @@ of matrix products a scalar, we have to ensure \(r_0 = r_d = 1\) \autocite{Osede
 
 The three-way case presents no obvious simplifications from the general case but we present it
 here to ensure consistent notation through the remainder of this section. The TT-decomposition
-of a three-way tensor of size \(I \times J \times K\) has three `cores' with shapes
-\(1 \times I \times r_1\), \(r_1 \times J \times r_2\) and \(r_2 \times K \times 1\). For
+of a three-way tensor of size \(n_1 \times n_2 \times n_3\) has three `cores' with shapes
+\(1 \times n_1 \times r_1\), \(r_1 \times n_2 \times r_2\) and \(r_2 \times n_3 \times 1\). For
 convenience, we can treat these as a matrix, a three-way tensor and a matrix by ignoring 
 dimensions of size one. This leads to the following expression of 
 equation~\ref{eq:tensortrain_full} where \(\tensor{W}\) is the three way tensor in its
@@ -665,14 +712,70 @@ decomposed form:
 	W_{ijk} = \mat{A}_{i\midbullet} \mat{B}_{\midbullet j \midbullet} \mat{C}_{\midbullet k}.
 \end{equation} In a manner consistent with the CP-decomposition we denote such a decomposed
 tensor \(\tensor{W} = [\mat{A},\tensor{B},\mat{C}]_{TT}\). It is important to note that the
-shapes are less consistent: \(\mat{A}\) is an \(I \times r_1\) matrix, \(\tensor{B}\) a
-\(r_1 \times J \times r_1\) tensor and \(\mat{C}\) an \(r_2 \times K\) matrix.
+shapes are less consistent: \(\mat{A}\) is an \(n_1 \times r_1\) matrix, \(\tensor{B}\) a
+\(r_1 \times n_2 \times r_1\) tensor and \(\mat{C}\) an \(r_2 \times n_3\) matrix.
+
+As this decomposition only contains contractive products, it is very well expressed as a Tensor
+Network diagram. Figure~\ref{fig:tttnds} shows both the general case and the three-way case --
+the general case shows clearly how we can build a tensor with a large number of dimensions purely
+out of relatively small three-way tensors. The Tucker decomposition is also presented to illustrate
+the similarities in the three-way case. It is also worth contrasting with figure~\ref{cp:bilintnd}
+to see how the CP-decomposition can arise as a special case, a notion which is formalised later.
+
+\begin{figure}
+	\centering
+	\begin{subfigure}[t]{0.45\textwidth}
+		\begin{tikzpicture}
+		\draw
+				(2,0) -- (1,0) node[label=below:{\(\mat{A}\)}]{}
+				-- (0,0)
+				(-2,0) -- (-1,0) node[label=below:{\(\mat{C}\)}]{}
+				-- (0,0)
+				(0,0) node[label=below:{\(\tensor{B}\)}]{} -- (0,1)
+			;
+		\end{tikzpicture}
+		\caption{Three-way tensor train.}
+	\end{subfigure}~
+	\begin{subfigure}[t]{0.45\textwidth}
+		\begin{tikzpicture}
+		\draw
+				(2,0) -- (1,0) node[label=below:{\(\mat{C}\)}]{}
+				-- (0,0)
+				(-2,0) -- (-1,0) node[label=below:{\(\mat{A}\)}]{}
+				-- (0,0)
+				(0,0) node[label=below:{\(\tensor{B}\)}]{} -- (0,1)
+				-- (0,1) node[label=right:{\(\mat{C}\)}]{} -- (0,2)
+			;
+		\end{tikzpicture}
+		\caption{Three-way Tucker decomposition.}
+		\label{fig:tuckertnd}
+	\end{subfigure}\\
+	\begin{subfigure}[t]{0.45\textwidth}
+		\begin{tikzpicture}
+		\draw
+				(-2,0) -- (-1,0) node{}
+				-- (0,0) node{} -- (0,1)
+				(-1,0) -- (-1, 1)
+				(0,0) -- (0,1)
+				(0,0) -- (1,0)
+				
+				(2,0) -- (3,0) node{}
+				-- (4,0)
+				(3,0) -- (3, 1)
+			;
+		\path (1,0) -- node[auto=false, draw=none, fill=none] {\ldots} (2,0);
+		\end{tikzpicture}
+		\caption{General Tensor Train}
+	\end{subfigure}
+	\caption{Diagrams of the Tensor Train and Tucker decompositions.}
+	\label{fig:tttnds}
+\end{figure}
 
 \subsubsection{Bilinear Product}
 Computing a bilinear product between two vectors and a tensor in the TT-decomposition does not
 have quite such an efficient form as the CP-decomposition. Primarily this is due to the presence
 of the three-way tensor \(\tensor{B}\), which means we are still eventually computing a full
-tensor product, albeit involving a smaller tensor. We denote the product as
+tensor product, simply with a smaller tensor. We denote the product as
 \begin{equation} \label{eq:tt_bilin}
 	\vec{z} = \vec{x}^\mathsf{T}\mat{A}\tensor{B}\mat{C}\vec{y}.
 \end{equation} For a specific index this has the form
@@ -688,6 +791,7 @@ back to the appropriate size.
 
 
 \subsubsection{Gradients}
+\hl{Should do all at once?}
 In the TT-decomposition the gradients are very similar.
 The gradient of \(\vec{z}\) with respect to \(\mat{A}\) has entries of the form:
 \begin{align}
@@ -716,8 +820,57 @@ or neither, since it seems reasonable to expect similar dynamics.
 \subsubsection{Equivalence}
 One condition for the tensor-train to be equivalent to the CP-decomposition is if the central
 tensor in the TT-decomposition has diagonal, square slices. Intuitively this reduces the tensor
-product to a matrix product. To the best of our knowledge this result has not been presented 
-elsewhere. It can be found in the appendix, proposition~\ref{prop:equiv}.
+product to a matrix product. 
+
+\begin{prop}
+The rank \(R\) CP-decomposition of a tensor \(\tensor{X} = [\mat{A},\mat{B},\mat{C}]_{CP}\) is
+equivalent to a TT-decomposition \([\mat{A}', \tensor{B}', \mat{C}']_{TT}\) with both ranks
+equal to \(R\) and \(\tensor{B}'_{ijk} = 0\) except where \(i=k\).
+\end{prop}
+\begin{proof}
+Consider the slices of \(\tensor{X} \in \mathbb{R}^{n_1 \times n_2 \times n_3}\) formed by fixing the
+second index and allowing the first and third to vary. If 
+\(\tensor{X} = [\mat{A}, \mat{B}, \mat{C}]_{CP}\) then these slices can be expressed concisely as
+\begin{equation} \label{eq:cp-slice}
+	\mat{X}_{\midbullet j \midbullet} = \mat{A}\diag({\mat{B}_{j\midbullet}})\tran{\mat{C}}
+\end{equation} where \(\diag(\vec{v})\) denotes the matrix with vector \(\vec{v}\) along the
+leading diagonal and zero elsewhere. In the above the vector is in fact the \(j\)-th row of
+the factor matrix \(\mat{B}\). It is clear the the diagonal matrix must then have shape
+\(R \times R\) so the result has the expected shape \(n_1 \times n_3\). We also verify this gives us
+the appropriate expression for a single element of the tensor:
+\begin{align}
+	X_{ijk} &= \left(\mat{A}\diag({\mat{B}_{j\midbullet}})\tran{\mat{C}}\right)_{ik} \\
+		    &= \sum_{\alpha=1}^R A_{i\alpha} \cdot
+		    	\left(\sum_{\beta=1}^{R} \diag(B_{j\midbullet})_{\alpha\beta} C_{k\beta}\right) \\
+			&= \sum_{\alpha=1}^R A_{i\alpha} B_{j\alpha} C_{k\alpha}
+\end{align} where the last step follows from diagonality.
+
+We now construct a TT-decomposition \(\tensor{X} = [\mat{A}', \tensor{B}', \mat{C}']_{TT}\)
+of the same tensor. The ranks of the decomposition will be \(r_1 = r_2 = R\) for \(R\) the rank
+of the corresponding CP-decomposition.
+Let \(\mat{A}' = \mat{A}\) and \(\mat{C}' = \tran{\mat{C}}\). Construct tensor \(\tensor{B}'\)
+by
+\begin{equation}
+	B_{ijk}' = \begin{cases}
+		B_{ij} & \text{if}\; i = k \\
+		0    & \text{otherwise}.
+	\end{cases}
+\end{equation}
+
+An expression for the central slices of \(\tensor{X}\) in terms of its TT-decomposition which
+follows from the element-wise definition is
+\begin{align}
+	\mat{X}_{\midbullet j \midbullet} &= \mat{A}'\mat{B}_{\midbullet j \midbullet}'\mat{C}'\\
+	&= \mat{A}\diag(B_{j\midbullet})\tran{\mat{C}}
+\end{align}
+by construction of \(\tensor{B}\).
+\end{proof}
+
+As is demonstrated in figure~\ref{fig:tuckertnd} the Tucker decomposition is very similar to the 
+tensor-train in the three-way case. For brevity we refrain from presenting the full Tucker
+decomposition -- it suffices to note that it has matrices for all three dimensions rather than
+just two. In order to convert the Tucker decomposition to the tensor-train, it is enough to multiply
+the additional matrix with the central tensor. For that reason, we prefer the simpler tensor-train.
 
 \subsubsection{Space Requirements}
 The CP-decomposition is appealing because it has a single hyper-parameter \(r\). Further, the
@@ -729,4 +882,392 @@ proportional to the square of that value. As the rank has to be an integer, this
 us fewer feasible options.
 
 \section{Learning decompositions by gradient descent}
-Multiplicative dynamics = instability?
+We now present some experimental results, with two aims in mind. Firstly, it is instructive to compare
+the performance of the two tensor decompositions when learnt by gradient descent on some
+straightforward tasks. Secondly we wish to verify that a tensor decomposition is capable of learning
+complicated structure by applying it to a classic benchmark and a real world example.
+
+\subsection{Random Bilinear Products}\label{sec:randbilin}
+The first test uses the following procedure: generate a fixed random tensor \(\tensor{T}\)
+in the chosen decomposition with rank \(r_T\). Then generate a second tensor \(\tensor{W}\) 
+with rank \(r_W\). At each stage \(t\) generate a pair of random input vectors \(\vec{x}_t\) and
+\(\vec{y}_t\) and compute the bilinear products 
+\(\vec{z}_tt = \vec{x}_t^\mathsf{T}\tensor{T}\vec{y}_t\) and 
+\(\hat{\vec{z}}_t = \vec{x}_t^\mathsf{T}\tensor{W}\vec{y}_t\). Finally update the parameters of
+\(\tensor{W}\) to minimise the mean squared error between \(\vec{z}^t\) and \(\hat{\vec{z}}^t\)
+using stochastic gradient descent. In this way we hope to learn an approximation to 
+\(\tensor{T}\) in a similar setting to what might be found inside a neural network.
+
+In practice it is computationally expedient to deal with more than one vector at a time, in
+all of the results for this section we use a batch size of \(32\). We use a fairly aggressive
+ learning rate of \(0.1\).
+Training continues for \(250,000\) parameter updates, although most of the tensors have stopped
+making significant improvements by that time. In all tests the input vectors had elements drawn
+from a uniform distribution over the range \([-1,1]\) while unless otherwise noted the elements of
+the decomposition are drawn from a normal distribution with mean \(0\) and standard deviation
+\(0.1\).
+
+The results of attempting to approximate a rank 100 tensor with dimensions 
+\(100 \times 100 \times 100\) are shown in figure~\ref{fig:cpapprox} and are more or less
+as anticipated when attempting to approximate a CP-decomposition with another CP-decomposition.
+When the approximator is a TT-decomposition, it was found to be very difficult to achieve a
+good approximation -- when the learning rate was dropped to account for the apparent high
+sensitivity of the loss the still failed to approach the error rates of the CP-decomposition.
+While we might expect the CP-decomposition to better represent another CP-decomposition due to
+the shared structure, it is nonetheless remarkable how difficult the TT-decomposition was to
+train.
+
+In general we see that the quality of the approximation drops consistently with the
+number of parameters in the approximator, which is to be expected. 
+More unexpected is the variance apparent in the training
+curves of the CP-decomposition -- the very low rank approximations seem more sensitive to small
+ changes in their coefficients. This suggests that some care
+may need to be taken with the learning rates and the initialisation especially in deeper models as
+when such difficulties will be compounded.
+It is also useful to note that over-specifying the rank of the decomposition
+appears to still aid learning.
+
+
+The experiment was repeated with the target tensor expressed is a TT-decomposition with ranks
+\(r_1 = r_2 = 16\) (28,800 coefficients). Results can be seen in figure~\ref{fig:ttapprox}.
+As should be expected, the TT-decomposition performed better. In particular a TT-decomposition
+matching the rank of the target tensor reached a very low error extraordinarily quickly,
+performing much better than the CP-decomposition under the same conditions.
+
+These results imply both decompositions are potentially useful. The CP-decomposition seems to
+be capable of learning reasonable approximations even when it does not necessarily reflect the
+structure of the underlying problem. The TT-decomposition appears to struggle in this situation,
+but when the problem is structured in a more favourable way it seems to take greater advantage.
+
+\begin{figure}
+\centering
+\begin{subfigure}[t]{0.45\textwidth}
+	\includegraphics[width=\textwidth]{tensors/cp100cpapprox}
+	\caption{Attempting to approximate by directly learning factor matrices representing a 
+		CP-decomposition of various ranks}
+	\label{fig:cpcpapprox}
+\end{subfigure}
+~
+\begin{subfigure}[t]{0.45\textwidth}
+	\includegraphics[width=\textwidth]{tensors/cp100ttapprox}
+	\caption{Attempting to approximate by directly learning a TT-decomposition of various ranks}
+	\label{fig:cpttapprox}
+\end{subfigure}
+\caption{Results for learning direct approximations of a CP-rank 100 tensor.}
+ \label{fig:cpapprox}
+\end{figure}
+
+\begin{figure}
+\centering
+\begin{subfigure}[t]{0.45\textwidth}
+	\includegraphics[width=\textwidth]{tensors/tt16cpapprox}
+	\caption{Attempting to approximate by directly learning a 
+		CP-decomposition of various ranks}
+	\label{fig:ttcpapprox}
+\end{subfigure}
+~
+\begin{subfigure}[t]{0.45\textwidth}
+	\includegraphics[width=\textwidth]{tensors/tt16ttapprox}
+	\caption{Attempting to approximate by directly learning a TT-decomposition of various ranks}
+	\label{fig:ttttapprox}
+\end{subfigure}
+\caption{Results for learning direct approximations of a tt-rank 16 tensor.}
+\label{fig:ttapprox}
+\end{figure}
+
+\subsection{Learning to multiply}
+Learning bilinear functions provides a way to linearly approximate functions of two variables.
+A motivating example of such a function is elementwise multiplication, also known as the Hadamard
+product. In this section we investigate briefly the ability of the two decompositions to model
+such a product.
+
+\subsubsection{Theory}
+We wish to determine first how to construct a tensor that represents an elementwise product and
+then determine the rank of the decomposition required to represent it. Note that the tensor must
+have the same size in all dimensions as the inputs and
+ output of the product must be the same size. This tensor must be \textit{diagonal} with the
+ diagonal elements having value one
+ (see proposition~\ref{prop:identity} in the appendix for a proof). This means all entries
+\(ijk\) such that \(i = j = k\) must be one, all other entries zero. We denote such a tensor
+by \(\tensor{H}\).
+
+Now we consider how the two proposed decompositions could model this tensor. For the 
+CP-decomposition this is straightforward:
+\(\tensor{H} = [\mat{I}, \mat{I}, \mat{I}]_{CP}\) where \(\mat{I}\) is the 
+\(N\times N\) identity matrix. This is can be easily verified as the definition of a bilinear
+product with a CP-decomposed tensor includes an elementwise product so it suffices to ensure the
+factor matrices do not alter the inputs. The CP-decomposition reduces the required parameters
+to \(3N^2\) as opposed to the original \(N^3\). This is a remarkable reduction, considering that
+an analogous diagonal \emph{matrix} is the worst case for the corresponding two-way 
+decomposition. 
+
+The TT-decomposition is not capable of reducing the parameters. In order to ensure that the
+central tensor product passes through the appropriate elements it must in
+fact be equal to \(\tensor{H}\) itself.
+
+\subsubsection{Experiments}
+Learning exact elementwise products is a special case and can clearly be done with the 
+CP-decomposition without sacrificing parameter reduction. The question that remains is how closely
+a given decomposition can approximate an elementwise product, especially if there is some kind of
+helpful latent structure in the inputs to exploit. We test this by inducing a random structure
+on the inputs.
+
+First we verify our theories about the capacity of the decompositions to represent elementwise
+multiplication. This is performed identically to the experiments in section~\ref{sec:randbilin}
+except that that rather than generating a random tensor to provide the targets for training,
+we simply multiply elementwise the input vectors. We also simplify slightly by drawing the
+input vectors from \(\{0,1\}\) with equal probability
+(elementwise multiply in this sense corresponds to a bitwise AND). 
+Again the squared error loss is used, although
+a momentum term (with coefficient 0.9) was found to greatly assist learning.
+For a further test, the target
+output has a fixed permutation applied which removes the diagonal structure from the target but
+should still be a straightforward task. For this task we would
+expect that the CP-decomposition drastically outperforms the TT-decomposition.
+
+The results, figures~\ref{fig:multiply-ff} and \ref{fig:permute-multiply-ff}, affirm our
+expectations. The CP-decomposition is able to consistently reduce error as rank increases
+ while the TT-decomposition appears to struggle.
+
+
+\begin{figure}
+	\begin{subfigure}[t]{0.45\textwidth}
+		\includegraphics[width=\textwidth]{tensors/multiply-cp-mom}
+		\caption{Learning curves for CP-decompositions learning elementwise multiplication}
+	\end{subfigure}
+	~
+	\begin{subfigure}[t]{0.45\textwidth}
+		\includegraphics[width=\textwidth]{tensors/multiply-tt-mom}
+		\caption{Learning curves for TT-decompositions learning elementwise multiplication}
+	\end{subfigure}
+	\caption{Training error for various rank decompositions on the elementwise multiplication
+	task.}
+	\label{fig:multiply-ff}
+\end{figure}
+
+\begin{figure}
+	\begin{subfigure}[t]{0.45\textwidth}
+		\includegraphics[width=\textwidth]{tensors/permute-cp-mom}
+		\caption{Learning curves for CP-decompositions learning permuted 
+		elementwise multiplication}
+	\end{subfigure}
+	~
+	\begin{subfigure}[t]{0.45\textwidth}
+		\includegraphics[width=\textwidth]{tensors/permute-tt-mom}
+		\caption{Learning curves for TT-decompositions learning permuted
+		 elementwise multiplication}
+	\end{subfigure}
+	\caption{Training error for various rank decompositions on the permuted
+	elementwise multiplication
+	task.}
+	\label{fig:permute-multiply-ff}
+\end{figure} 
+
+
+For a more realistic test we introduce a random structure to the input vectors. This is done by
+creating smaller vectors and expanding them to the appropriate size by copying the
+elements to random positions. The mapping of positions is fixed for the duration of a training
+run. We then experiment with varying the size of these smaller vectors and hence varying the
+degree of correlation while keeping the rank of the decomposition fixed. Here we have fewer
+preconceptions regarding the relative performance of the decompositions.
+
+
+The results again show the CP-decomposition outperforming the TT-decomposition dramatically.
+In this case this is slightly more surprising as there is more likely to be solutions
+obtainable in the TT-decomposition.
+
+
+\begin{figure}
+	\begin{subfigure}[t]{0.45\textwidth}
+		\includegraphics[width=\textwidth]{tensors/correlatecp50-mom}
+		\caption{Learning curves for a rank 50 CP-decomposition.}
+	\end{subfigure}
+	~
+	\begin{subfigure}[t]{0.45\textwidth}
+		\includegraphics[width=\textwidth]{tensors/correlatett11-mom}
+		\caption{Learning curves for a rank 11 TT-decomposition.}
+	\end{subfigure}
+	\caption{Training error for two decompositions learning elementwise multiplication with
+	 varying amounts of structure.}
+	\label{fig:correlate-multiply}
+\end{figure}
+
+\subsection{Separating Style and Content}
+In this section we apply the tensor decompositions to a less trivial task. In particular, we
+address the \textit{extrapolation} problem presented by Tenenbaum and Freeman 
+\autocite{Tenenbaum2000}. The focus in this task in on data that is naturally presented as a
+function of two factors, termed \textit{style} and \textit{content}. Tennenbaum and Freeman
+propose the use of bilinear models for such data as follows.
+
+Let \(\vec{y}_{sc}\) be an observation vector with style \(s\) and content \(c\). It is modelled
+in bilinear form:
+\begin{equation}
+	\vec{y}_{sc} = \tran{\vec{a}_s}\tensor{W}\vec{b}_c
+\end{equation} where \(\vec{a}_s\) and \(\vec{b}_c\) are style and content parameter vectors
+respectively and \(\tensor{W}\) represents a set of basis functions independent of the parameters.
+A number of tasks involving learning such a model were proposed, but we focus on extrapolation:
+ learning both the parameter vectors and the basis tensor at once in such a way that
+the model successfully generalises to style and content pairs not seen during training.
+
+We model the style and content parameter vectors as fixed length, dense vectors with a unique
+vector for each style label and each content label. The parameters in these vectors can be
+learnt by gradient descent at jointly with the tensor \(\tensor{W}\). This is equivalent
+to representing them in a one-of-N encoding (a vector with one value per possible label, all
+zero apart from the entry corresponding to the label in question) and then multiplying it by
+a matrix. We refer to such a matrix as an \textit{embedding matrix}. It is clear that if we
+were to attempt to learn the model without these embedding matrices and simply representing
+\(\vec{a}\) and \(\vec{b}\) with one-of-N encodings that the model would fail completely to
+generalise. A bilinear product with two such vectors would amount to selecting a single fibre
+from the tensor, so the tensor could only ever hope to directly store the training data.
+Introducing a decomposition changes this by forcing the elements of the tensor to depend on
+one another.
+
+
+\subsubsection{Data}
+One dataset explored in \autocite{Tenenbaum2000} is typographical -- this provides a natural
+source of data defined by two factors: font and character. We refer to the character as the
+content and the font as the style. We collected a small dataset of five fonts and their
+italic/oblique variants for a total of ten styles. Variation between styles comes from stroke
+width, slant and the presence of absence of serifs. From each font the uppercase and lowercase
+letters of the English alphabet were extracted, totalling 52 different content labels. Data was
+saved as 32 pixel by 32 pixel greyscale images. To represent images as vectors for the purposes
+of the above model they are flattened in scanline order: left to right and top to bottom.
+
+\subsubsection{Experiments}
+This is a very difficult task as we are expecting the model to produce pictures similar to ones
+that have never been seen in training. Further, we are trying to train a model with potentially
+thousands of free parameters based only on a few hundred examples. As this suggests, stopping
+the model from overfitting was the major challenge. The aim of the experiments was not
+necessarily to achieve state-of-the-art performance, but to quickly ensure that using a tensor
+decomposition to model non-trivial interactions was a feasible goal.
+
+To begin we verify that a fairly small model is capable of representing the data. For this we
+use embeddings of size \(25\) and a rank \(25\) CP-decomposition. This model has 78,350
+parameters, while a model that contained the explicit \(25 \times 1024 \times 25\) tensor
+would have 641,550. We train the model using ADAM \autocite{Kingma2014}, a variant of
+stochastic gradient descent to minimise the squared error:
+\begin{align}
+	E = \sum_{i}^B ||\hat{\vec{y}}_{sc} - \vec{y}_{sc}||_2^2
+\end{align} where \(B\) is the number of elements in a batch (26 was used in the following) and
+\(\hat{\vec{y}}_{sc} = \vec{a}_s^\mathsf{T}\tensor{W}\vec{b}_c\) is the predicted image. Both
+the central tensor and the embedding vectors are updated at every update step. A small amount
+of \(l_2\) regularisation was found to help prevent overfitting, this involves adding a penalty
+term to the loss of the form \(\lambda||\mat{X}||_F^2 = \lambda\sum_i^m\sum_j^mX_{ij}^2\) for
+each matrix in the model.
+
+Figure~\ref{fig:sandc-interp} provides a quick visual inspection of what the model was able to
+learn. Images were generated by finding the style and content labels for a two examples and
+linearly interpolating first the content vector and then the style vector, generating an
+image with the intermediate vectors at each step. 
+
+The start and end images are not perfect; the model was small and unable to capture the training
+data exactly. During experimentation larger models were found to fit the data very well, but to
+begin to overfit after only one or two epochs of training while a smaller model tended to perform
+better on validation data for longer.
+
+Intermediate stages of the interpolation have no real meaning but they indicate that the model has
+not simply learned to recall individual pairs of labels. We see that as either the content or
+the style shifts from one to another, the elements of the source image which are not shared with
+the target fade out and are replaced.
+
+Results on unseen data are shown in figure~\ref{fig:sandc-valid}. These show that the model does
+appear to capture some of the salient information for separating the style and content. In
+particular, the general shapes of the letters are roughly appropriate and it has begun to capture
+some information about the presence or absence of serifs and general slant.
+Figure~\ref{fig:sandc-fail} shows a harder example -- the lowercase `a' has considerable variation
+among various fonts and the model is unable to guess what would be appropriate for an unseen
+example. 
+
+
+\begin{figure}
+	\begin{subfigure}[t]{\textwidth}
+	\begin{tabu} to \textwidth {XXXXXXXXXX}
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output0} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output1} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output2} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output3} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output4} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output5} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output6} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output7} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output8} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output9} 
+	\end{tabu}
+	\caption{Linearly interpolating between two content vectors (`T' to `m') with style vector
+			 fixed.}
+	\end{subfigure}
+	
+	\begin{subfigure}[t]{\textwidth}
+	\begin{tabu} to \textwidth {XXXXXXXXXX}
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output10} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output11} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output12} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output13} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output14} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output15} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output16} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output17} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output18} &
+		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output19}
+	\end{tabu}
+	\caption{Linearly interpolating between two style vectors with fixed content.}
+	\end{subfigure}
+	\caption{Learned style and content representations.}
+	\label{fig:sandc-interp}
+\end{figure}
+
+\begin{figure}
+	\begin{subfigure}[t]{\textwidth}
+		\begin{tabu} to \textwidth {XXXXXXXXX}
+			\includegraphics[scale=1]{tensors/sandc/valid/real/Georgia-76} &
+			\includegraphics[scale=1]{tensors/sandc/valid/real/Georgia-77} &
+			\includegraphics[scale=1]{tensors/sandc/valid/real/Georgia-83} &
+			\includegraphics[scale=1]{tensors/sandc/valid/real/VeraMoIt-86} &
+			\includegraphics[scale=1]{tensors/sandc/valid/real/VeraMoIt-100} &
+			\includegraphics[scale=1]{tensors/sandc/valid/real/VeraMoIt-101} &
+			\includegraphics[scale=1]{tensors/sandc/valid/real/VeraMono-66} &
+			\includegraphics[scale=1]{tensors/sandc/valid/real/VeraMono-76} &
+			\includegraphics[scale=1]{tensors/sandc/valid/real/VeraMono-89} 
+		\end{tabu}
+		\caption{Actual images from the dataset.}
+	\end{subfigure}
+	
+	\begin{subfigure}[t]{\textwidth}
+		\begin{tabu} to \textwidth {XXXXXXXXX}
+			\includegraphics[scale=1]{tensors/sandc/valid/synth/Georgia-76} &
+			\includegraphics[scale=1]{tensors/sandc/valid/synth/Georgia-77} &
+			\includegraphics[scale=1]{tensors/sandc/valid/synth/Georgia-83} &
+			\includegraphics[scale=1]{tensors/sandc/valid/synth/VeraMoIt-86} &
+			\includegraphics[scale=1]{tensors/sandc/valid/synth/VeraMoIt-100} &
+			\includegraphics[scale=1]{tensors/sandc/valid/synth/VeraMoIt-101} &
+			\includegraphics[scale=1]{tensors/sandc/valid/synth/VeraMono-66} &
+			\includegraphics[scale=1]{tensors/sandc/valid/synth/VeraMono-76} &
+			\includegraphics[scale=1]{tensors/sandc/valid/synth/VeraMono-89} 
+		\end{tabu}
+		\caption{Model output, having never seen these specific pairs during training.}
+	\end{subfigure}
+\caption{Example of images generated from unseen style and content pairs, three letters from
+		 three different fonts.}
+\label{fig:sandc-valid}
+\end{figure}
+
+
+\begin{figure}
+	\begin{center}
+	\begin{subfigure}[t]{0.45\textwidth}
+		\centering
+		\includegraphics[scale=1]{tensors/sandc/valid/real/Georgiai-97}
+		\caption{From the data}
+	\end{subfigure}
+	~
+	\begin{subfigure}[t]{0.45\textwidth}
+		\centering
+		\includegraphics[scale=1]{tensors/sandc/valid/synth/Georgiai-97}
+		\caption{Generated}
+	\end{subfigure}
+	\end{center}
+	\caption{A difficult example.}
+	\label{fig:sandc-fail}
+\end{figure}
+
+

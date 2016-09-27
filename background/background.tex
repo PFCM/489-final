@@ -3,8 +3,58 @@
 \chapter{Background and Related Work}\label{C:bg}
 \section{Background}
 \subsection{Feed-Forward Neural Networks}
-This is to be pretty brief. Cover useful things -- what they look like, gradient descent
-(in brief) and outline some results on the expressive power.
+Feed-forward neural networks are a class of parameterised function approximators which consist of
+artificial neurons arranged in layers. They arise from generalisations of the perceptron
+\autocite{Rosenblatt1958},
+indeed simple feed-forward networks are often termed `multi-layer perceptrons' (MLPs). MLPs solve
+the key limitations of the early perceptron \autocite{Minsky1969}, but it was not until 1986
+when a reliable and general purpose procedure (\emph{back-propagation}) was 
+proposed \autocite{Rumelhart1986} to train them.
+
+Conceptually it is possible to consider MLPs as a directed acyclic graph, where each node consists
+of a `neuron' or `unit' with the direction of the edges indicating the way information flows from
+the input of the function being modelled to the output. For an MLP this graph is divided into layers.
+The first layer represents the input (with one unit per coordinate) while subsequent layers
+represent individual neurons. In a standard fully-connected network, every node is connected to all
+nodes in the subsequent layer. When an input is presented to the network, each neuron computes
+an activation by a weighted sum over its inputs followed by the application of some non-linear
+function. Specifically a unit that receives inputs \((x_1, x_2, \ldots, x_n)\) will compute its
+activation \(h\) as:
+\begin{equation}\label{eq:perceptron}
+	h = f\left(\sum_{i=1}^n x_iw_i\right)
+\end{equation} where \((w_1, w_2, \ldots, w_n) + b\) are the weights the neuron gives its inputs and
+\(b\) is a bias, commonly added to enhance the expressive power.
+\(f : \mathbb{R} \to \mathbb{R}\) is some nonlinear function, common examples would be a threshold,
+the logistic sigmoid \(\sigma(x) = \frac{1}{1 + e^{-x}}\) or a linear rectifier
+\(\rho(x) = \max(0, x)\) \autocite{Nair}.
+
+While it is convenient to consider the network in this manner, it is computationally and
+notationally more efficient to consider to express many neurons at once, using vectors and matrices.
+If we consider the input to a network as a vector of features \(\vec{x}\), we can express
+eq. \eqref{eq:perceptron} with a matrix multiplication as
+\begin{equation}\label{eq:vecperceptron}
+	h = f\left(\tran{\vec{w}}\vec{x} + b\right)
+\end{equation} where \(\vec{w}\) is the weights from eq. \eqref{eq:perceptron} as a vector.
+We can generalise this to compute an entire layer of activations at once. Let \(\mat{W}\) be a matrix
+whose rows contain the weight vectors for each neuron in a given layer and \(\vec{b}\) a vector
+containing all of their biases. We can then compute their
+activations at once with
+\begin{equation}
+	\vec{h} = f(\mat{W}\vec{x} + \vec{b})
+\end{equation} provided we ensure \(f\) is applied elementwise to the result.
+
+This gives us a single layer, a classic MLP will perform this process twice, although the last layer
+is often linear:
+\begin{equation}
+	\hat{\vec{y}} = \mat{W}^{(2)}f(\mat{W}^{(1)}\vec{x} + \vec{b}^{(1)}) + \vec{b}^{(2)}.
+\end{equation} This can be though of as proceeding in stages -- first compute \(\vec{h}\) as before
+and then using another set of weights compute a new transformation of it to get the final output.
+
+\subsubsection{Training}
+To train such a network we need a set of inputs
+
+backprop\\
+overfitting?
 
 \subsection{Recurrent Neural Networks}
 Recurrent Neural Networks (RNNs) of the form considered here generalise feed-forward networks to
@@ -20,6 +70,7 @@ image generation \autocite{Gregor2015}, automatic captioning \autocite{Vinyals20
 An RNN is able to maintain context over a sequence by transferring its hidden state from one
 time-step to the next. We refer to the vector of states at time \(t\) as \(\vec{h}_t\).
 
+\hl{output}
 The classic RNN (often termed ``vanilla'') originally proposed in \autocite{Elman1990}
 computes its hidden states with the following recurrence:
 \begin{equation}
@@ -235,9 +286,67 @@ transitions and may help it ``bootstrap'' itself past the vanishing gradients.
 
 
 \subsection{Memory}
-Something about using memory, needing to add extra memory/weird ways of using it to make LSTMs et al.
-do cool stuff. Repeat observation that having to go to all this trouble indicates the LSTM is the
-issue.
+Another line of research which attempts to enhance the capabilities of RNNs focuses on augmenting
+them with additional memory structures. There are two key motivations for this kind of work. 
+One aim is to decouple the memory from the network so that it can store and interact with arbitrary
+quantities of information. The second is related to vanishing gradients in the hope that a novel
+method of storing or addressing information will be more robust to long time delays.
+
+\hl{Too general for here, maybe move to introduction?}
+Many of these ideas seem to be founded on an intuition which has not been clearly formalised. In
+general, the task of an RNN is to learn a mapping from one sequence to another sequence one step at
+a time using an intermediate memory (the hidden states). Intuitively a solution must consist of
+writing to and reading from memory, both conditioned on input. In an RNN, reading from the memory is
+trivially attended to as typically the entire memory is used to produce the output at each time
+step. However, we would suggest identifying two separate types of writing to memory: accumulating
+and forgetting. Many of the architectures discussed below (and the GRU and LSTM above) have separate
+mechanisms for these two tasks. 
+We consider an accumulation to be an updating of the state, typically additively, to incorporate
+new information. Forgetting is simply wiping clean a section of the memory -- this tends to be
+achieved multiplicatively. Different tasks will require a different balance of the two. Instinctively,
+a classification tasks in which the network is only evaluated on its final output would favour
+more accumulative solutions. Conversely, tasks which may not even have a fixed length but rather
+require constant prediction should be better suited to networks with an ability to forget information
+that is no longer relevant.
+
+A notable effort to decouple RNNs from their memory comes in Neural Turing Machine proposed in
+\autocite{Graves2014}. This uses a neural network (which may or may not be recurrent itself) to
+attend to a large matrix of memory. Addressing for both reading and writing is done via a
+address mechanism mostly based on the softmax. It was evaluated on a number of synthetic tasks
+which mostly involved accumulation such as remembering a sequence of arbitrary patterns and outputting
+them after a number of time-steps in a particular order.
+
+Subsequently, Grefenstette et al. propose a set of neural Deques, Queues and Stacks which attempt to
+address the limitations of the fixed size memory of the Neural Turing Machine 
+\autocite{Grefenstette2015}. A similar approach is also found in Joulin and Mikolov's Stack Augmented
+RNN \autocite{Joulin2015}. These allow for unbounded memory with efficient access, at the cost of
+the random access nature of the memory. Primarily these are proposed as augmentations to an RNN,
+with the idea being that a standard RNN could operate as a small working memory while the more
+complex data structure (with more awkward access semantics) can be used for long-term, more exact
+storage. This is an exciting direction as it enables something akin to a learnable Von Neumann
+architecture \autocite{Graves2014}.
+
+Other such approaches have also arisen such as the Neural Random-Access Machine, which is similar to
+a Neural Turing Machine except that it solves a number of the inefficiencies with a clever addressing
+mechanism \autocite{Kurach2016}. Other related works include Pointer Networks \autocite{Vinyals2015}
+and Neural GPUs \autocite{Kaiser2015}. All of these involve adding fairly complex structures on
+top of an LSTM. While they are highly successful on synthetic tasks when compared to an
+un-augmented LSTM, very few of the tasks seem like the kind of task that an RNN should inherently be
+incapable of solving. Nearly all of the tasks addressed require a fixed size memory, and solutions
+can be imagined composed of carefully writing to it and reading from it. Hence it seems as though it
+is worth revisiting the basic architecture, rather than searching for distinct modules to add on.
+
+An approach in this direction is Danihelka et al.'s Associative LSTM \autocite{Danihelka2016}. 
+This work incorporates an associative memory model into the LSTM by adjusting several of the
+operations to reflect something close to a Holographic Reduced Representation \autocite{Plate1995}.
+This is a very encouraging angle -- to re-think the way in which the RNN uses its memory at a basic
+level seems like the most efficient and sensible way to address the issues. The results were
+very promising on some interesting synthetic tasks, focusing on the ability of the network to do
+key-value retrieval which should be a strength of the Holographic Reduced Representation.
+Unfortunately simply adjusting the network to sue such a reduced representation was insufficient for
+good performance and a number of complicating factors had to be incorporated, including keeping many
+redundant copies of memory which diminishes somewhat the elegance of the solution.
+
 
 \subsection{Tensors in Neural Networks}
 Including gated networks, MRNN and so on.
