@@ -1,6 +1,6 @@
 % !TEX root = ../proj_report_outline.tex
 
-\chapter{Tensors}\label{C:tens}
+\chapter{Three-way Tensors and Bilinear Products}\label{C:tens}
 
 In order to represent functions of two arguments with neural networks, three-way tensors are 
 unavoidable. In this chapter discuss the vector-tensor-vector bilinear product. We look at various
@@ -182,7 +182,7 @@ of these kinds of products.
 				}
 				(0:1) node{};
 		\end{tikzpicture}
-		\caption{Tensor-vector product produces a matrix.}
+		\caption{Tensor-vector product producing a matrix.}
 	\end{subfigure} ~
 	\begin{subfigure}[t]{0.45\textwidth}
 		\centering
@@ -288,7 +288,7 @@ in the other input.
 This intuition of choosing a matrix is suggested in \autocite{Sutskever2013} in the
 context language modelling with RNNs. It is suggested that allowing the current input
 character to choose the hidden-to-hidden weights matrix should confer benefits. 
-This intuition (and the factorisation of the implicit tensor) was put to use earlier in the context
+This intuition (and the factorisation of the implicit tensor) was put to use earlier in
 of Conditional Restricted Boltzmann Machines \autocite{Taylor} which actively seek to model the
 conditional dependencies between two types of input.
 
@@ -297,7 +297,7 @@ the product is entirely symmetrical. We can not think purely about it as \(\vec{
 for \(\vec{y}\) as the converse is equally true.
 
 \subsubsection{Tensor as an independent basis}
-Extending the above to try and capture the symmetricity of the operation, we introduce
+Extending the above to try and capture the symmetry of the operation, we introduce
 the notion that the coefficients of the tensor represent a basis in which to compare the
 two inputs, independent of both of them. This idea is mentioned in
  \autocite{Tenenbaum2000} which considered the problem of data that can be described by two
@@ -318,8 +318,9 @@ of weighted sums; first over slices and then over rows or columns. The final pro
 distinct representation of both vectors in terms of the independent basis expressed by the tensor.
 
 \subsubsection{Operation on the outer product}
-n this section we describe the bilinear tensor product as operating on pairwise
-products of inputs. This interpretation is essential for understanding the expressive
+Perhaps the most powerful interpretation of the product is achieved by observing that it can be
+seen as a linear operation on pairwise products of inputs.
+This interpretation is essential for understanding the expressive
 power of the operation as it gives rise to an obvious XOR-like behaviour. It also serves
 as a useful reminder that a bilinear form is linear in each input only when the other
 is held constant -- when both are allowed to vary we can represent complex non-linear
@@ -328,7 +329,7 @@ A way to approach this interpretation arises from a method of implementing the b
 product in terms of straightforward matrix operations.
 
 To discuss
-this we introduce the notion of the \emph{matricisation} of a tensor. Intuitively this
+this we need to introduce the notion of the \emph{matricisation} of a tensor. Intuitively this
 operation is a way of \emph{unfolding} or \emph{flattening} a tensor into a matrix,
 preserving its elements. Specifically the mode-\(n\)
 matricisation of a tensor is defined as an operation which takes all mode-\(n\) fibres
@@ -354,8 +355,7 @@ This flattens a matrix into a vector by stacking its columns. For some matrix \(
 For our purposes is is sufficient to note that a 
 mode-2 matricisation of a
 three-way tensor \(\tensor{W} \in \mathbb{R}^{n_1\times n_2\times n_3}\) must have shape
-\(n_2 \times n_1n_3\). This gives us the following lemma, which shifts this line of
-thinking slightly sideways.
+\(n_2 \times n_1n_3\). The following lemma helps us describe the components of this matricisation.
 
 \begin{lem}[Matricisation/vectorisation]
 The \(j\)-th row of the mode-2 matricisation of the three-way tensor \(\tensor{W}\)
@@ -372,8 +372,8 @@ By the above definition of the vectorisation operator, each index \((i, k)\) in 
 find tensor element \(W_{ijk}\) at index \((j, i + (k-1)n_3)\). Hence if we fix \(j\), we have
 precisely the vectorisation of the \(j\)-th slice of the tensor.
 
-The indices into \(\matr_2(\tensor{W})\) can be though of as arising from the following construction
-process: first fix all indices to 1. Construct a column by sweeping the second index, \(j\),
+The indices into \(\matr_2(\tensor{W})\) can be though of as arising from the following construction.
+First fix all indices to 1. Construct a column by sweeping the second index, \(j\),
 through its full range. Then increment the first index \(i\) and repeat the procedure, placing
 the generated columns with index \(i\). Only when \(i\) has swept through its full range
 increment the final index \(k\) and repeat the procedure. The generated columns should then be
@@ -404,7 +404,7 @@ row of the flattened tensor and the vectorised outer product of the inputs. By
 lemma~\ref{lem:matricise}:
 \begin{equation}
 	z_j = 
-	\sum_{s=1}^{n_1n_3} (\matr(\tensor{W})_{js} 
+	\sum_{s=1}^{n_1n_3} \left(\matr(\tensor{W})\right)_{js} 
 	\left( \vect\left[\vec{y}\vec{x}^\mathsf{T}\right]\right)_s
 \end{equation}
 We replace the sum over \(s\) with a sum over two
@@ -452,10 +452,17 @@ of theorem~\ref{thm:xor}, for binary inputs we must have this conjunctive relati
 \end{proof}
 
 \subsubsection{Remarks on theorem~\ref{thm:xor}}
-There are a number of remarks worth making about these results. Firstly they suggest considering
+%\paragraph{Higher level features}
+Firstly, this captures the notion that the bilinear tensor product operates implicitly on higher
+level features, constructed by combining both inputs. This indicates that it is capable of capturing
+complex binary relationships based on correlations between both inputs. This allows it
+to model a rich class of binary relations between \(\vec{x}\) and \(\vec{y}\).
+
+%\paragraph{XOR}
+Secondly this suggests considering
 the case where both inputs are the same: \(\vec{z} = \tran{\vec{x}}\tensor{W}\vec{x}\). Replacing
 bilinear forms with quadratic forms may invalidate some of the similarity based interpretations,
-but it might also provide an interesting class of very powerful feed-forward networks. As an example,
+but it also provides an interesting building block for feed-forward networks. As an example,
 note that a plain perceptron has been long known to be incapable of learning the exclusive-or
 mapping \autocite{Minsky1969} -- a neural network to solve the problem requires either a hidden layer
 or an additional input feature (specifically the conjunction of the inputs) \autocite{Rumelhart1986}.
@@ -463,26 +470,30 @@ By corollary~\ref{cor:and} this quadratic tensor form would implicitly and natur
 additional conjunctive feature and be capable of solving the exclusive or problem without hidden
 layers or hand-engineered features.
 
-Secondly, this captures the notion that the bilinear tensor product operates implicitly on higher
-level features, constructed by combining both inputs. This indicates that it is capable of capturing
-complex relationships between the two inputs.
-
+%\paragraph{Apparent depth}
 Finally we will point out that this gives an indication of what we term the `apparent depth' of the
 tensor product. While it has long been known that neural networks with a single hidden layer and
 appropriate non-linearity (and therefore two weight matrices)
  are universal function approximators \autocite{Hornik1989}, recent results
 have suggested that the depth of the network is important in keeping the number of parameters
 bounded \autocite{Eldan2016, Telgarsky2016}. In particular, Eldan and Shamir show that for a
-particular class of radial basis-like functions (which depend only on the squared norm of the input)
+particular class of radial basis-like functions -- which depend only on the squared norm of the 
+input
+\footnote{Precisely, functions \(f : \mathbb{R}^n \to \mathbb{R}\) such that
+\(f(\vec{x}) = f(\vec{y})\) implies that \(||\vec{x}||^2 = ||\vec{y}||^2\). Eldan and Shamir
+deal specifically with cases where the norm is the Euclidean norm (as is the case for the
+common squared-exponential kernel). They also
+require some additional constraints on the boundedness and support of the function, see
+\autocite{Eldan2016}, theorem 1, for the precise construction.}, --
 there exist networks with two hidden layers and a number of nodes polynomial in the input dimension
 which can perfectly approximate the function. They then show that a shallower network with a single
 hidden layer can only perfectly approximate the function with a number of nodes exponential in the
-input dimension \autocite{Eldan2016}.
+input dimension. \autocite{Eldan2016}
 
 Eldan and Shamir's proof constructs a three-layer network in the following manner:
 for an input \(\vec{x}\), the first two layers learn to approximate the map 
 \(\vec{x}\to ||x||^2_2 = \sum_i x_i^2\) while the final layer learns a univariate function on the
-squared norm \autocite{Eldan2016}.
+squared norm. \autocite{Eldan2016}
  
 It is straightforward to see that a quadratic tensor layer as discussed above could compute the
 squared norm. Consider the product \(\tran{\vec{x}}\tensor{W}\vec{x}\) and let 
@@ -502,8 +513,8 @@ parameters.
 
 \section{Tensor Decompositions}
 The ultimate goal is to learn the tensor that parameterises a bilinear product. Unfortunately
-such a tensor is often very large; an \(n \times n \times n\) would require \(O(n^3)\) space
-to store explicitly. Further,
+such a tensor is often very large; an \(n \times n \times n\) would require \(\Theta(n^3)\) space
+to store explicitly and a cubic number of operations to use to compute a bilinear product. Further,
 it is highly likely that we will be looking to model simpler interactions than the full tensor
 might represent. This leads to the idea of a parameterised decomposition -- an ideal solution
 would be a method of representing the tensor with some way of specifying the complexity of the
@@ -522,10 +533,10 @@ relevant to the above concerns.
 \subsection{CANDECOMP/PARAFAC}
 This method of decomposing a tensor dates as far back as 1927 
 \autocite{Hitchcock1927, Hitchcock1928} and was rediscovered repeatedly across a range of
-communities over the next 50 years \autocite{Kolda2009}. First referred to as `polyadic
+communities over the next 50 years. \autocite{Kolda2009} First referred to as `polyadic
 form of a tensor' we refer to it as the CP-decomposition after two prominent publications in
 1970 referring to the technique as `canonical decomposition' (CANDECOMP) \autocite{Carroll1970}
- or `parallel factors' (PARAFAC) \autocite{Harshman1970}. 
+ or `parallel factors' (PARAFAC). \autocite{Harshman1970}
  It is a fairly straightforward
 extension of a matrix rank decomposition to the more general case, representing a tensor as
 a sum of rank one tensors. This section contains a formal description of the three-way case
@@ -633,25 +644,38 @@ figure~\ref{fig:cpbilintnd}, which can be compared to figure~\ref{fig:vanillabil
 As the final aim is to attempt to learn the coefficients of the decomposition using gradient
 descent, it makes sense to check that the gradients of the parameters are well-behaved
 with respect to the output of the bilinear product. We break the gradient into three parts,
-one for each of the parameter matrices. \hl{do this properly}
+one for each of the parameter matrices. As the end goal is the gradient of a vector with respect
+to a matrix it should naturally be represented by a three-way tensor. Many authors avoid this by
+vectorising the matrix \autocite{Magnus2007}, but for the purposes below it is sufficient to note
+that the gradients are highly structured, and we can write a simple form for each element one at a
+time.
 
 Let \(\vec{z}\) be defined as above.
 The gradient of \(\vec{z}\) with respect to \(\mat{A}\) has entries of the form:
 \begin{align}
-	\frac{\partial z_j}{\partial A_{lm}} &= x_m \cdot \sum_k^{n_3}C_{lk}y_k \\
-		&= x_m \cdot \vec{C}_{l\midbullet}^\mathsf{T}\vec{y}.\\
+	\frac{\partial z_j}{\partial A_{lm}} &= \sum_k^{n_3}B_{lj}C_{lk}x_my_k \\
+		&= B_{lj}x_m \cdot \langle\vec{C}_{l\midbullet}, \vec{y}\rangle.\\
 \intertext{The gradients with respect to \(\mat{C}\) have the same form:}
 	\frac{\partial z_j}{\partial C_{lm}} &= y_m \cdot \sum_i^{n_1}A_{li}x_i \\
-		&= y_m \cdot \vec{A}_{l\midbullet}^\mathsf{T}\vec{x}.\\
+		&= B_{lj}y_m \cdot \langle\vec{A}_{l\midbullet}, \vec{x}\rangle.\\
 \intertext{The gradient of the final parameter matrix \(\mat{B}\) has entries}
 	\frac{\partial z_j}{\partial B_{lm}} &= 
-		\mathbb{I}_{m = j} \cdot \left( \mat{A}\vec{x} \odot \mat{C}\vec{y}\right)
-\end{align} where \(\mathbb{I}_{m=j}\) denotes the indicator function that is one if
-\(i = j\) and zero otherwise.
-This has the
-curious effect that the gradient of the product with respect to \(\mat{B}\) is the same for all
-columns of \(\mat{B}\). While this seems like it may hinder learning, in practice there
-will be additional terms due to the loss function which ameliorate this.
+		\sum_i^{n_1}\sum_k^{n_3}A_{li}C_{lk}x_iy_k. \label{eq:cpbilingrad}
+\end{align}
+Curiously, the \(j\) and \(m\) indices do not appear in the right hand side of 
+eq.~\eqref{eq:cpbilingrad}. This appears to suggest that \(\mat{B}\) may learn a significantly
+redundant structure. However, during gradient descent this will be multiplied by the back-propagated
+loss, will alter the update.
+
+A final point to make about these gradients is the degree of multiplicative interactions present.
+This has been noted to occasionally cause slightly problematic dynamics during gradient descent. The
+simplest example is to consider
+gradient descent on the product of two variables: \(c = ab\). If \(a\) is very small and \(b\) is
+very large then the update applied to \(b\) will be very small and the update applied to \(a\) will
+be proportionally very large. Sutskever \autocite{Sutskever2013} uses this as motivation for using
+second-order information during optimisation of RNNs containing similar structures. We prefer to
+counsel patience -- after the above step, the gradients will become perfectly aligned to the scale
+of the parameters and subsequent updates should be better aligned.
 
 
 \subsubsection{Storage Requirements}
@@ -660,29 +684,30 @@ The number of stored coefficients for a rank \(R\) CP-decomposed tensor of size
 \(IJK\) numbers to be stored. To illustrate the significance of this, consider the case when
 the tensor being decomposed has all dimensions and rank of equal size. Denoting the size as
 \(I\), then the explicit tensor will have an \(I^3\) storage requirement while the decomposed
-tensor needs only \(3I^2\).
+tensor needs only \(3I^2\), a remarkable reduction.
 
 
 \subsection{Tensor Train, Tucker}
 The \emph{tensor-train} decomposition has a much shorter history -- it was first proposed in
 2011 as a simpler way of representing a slightly hierarchical form derived from a
-generalisation of the singular value decomposition \autocite{Osedelets2011}. It is proposed
+generalisation of the singular value decomposition. \autocite{Osedelets2011} It is proposed
 as an alternative to the CP-decomposition which purportedly provides benefits in terms of
 numerical stability. It has been used to learn compressed weight matrices in large neural
 networks \autocite{Novikov} suggesting it is a prime candidate to learn with gradient descent.
-In the three-way case it is nearly equivalent to the more venerable Tucker decomposition
-\autocite{Tucker1966}. The tensor train turns out to be simpler so beyond showing the similarity,
-we consider primarily the tensor train.
+In the three-way case it is nearly equivalent to the more venerable Tucker 
+decomposition. \autocite{Tucker1966} The tensor train turns out to be simpler -- beyond showing the
+similarity, we consider solely the tensor-train.
 
-It is also important to note that the tensor-train can be used more creatively. In \autocite{Novikov}
-Novikov et al. use the decomposition to compress the final layers of a large convolutional neural
+It is also important to note that the tensor-train can be used more creatively. 
+Novikov et al. \autocite{Novikov} use the decomposition to compress the final layers of a 
+large convolutional neural
 network by reshaping the matrices into high dimensional tensors. The reduction in parameters for
 the tensor-train is most notable with particularly high-dimensional tensors, so this approach allows
 for significant compression. They also show methods of computing the required matrix vector products
 without having to expand the tensor. While this approach is highly successful, the implementation
 (especially of back-propagation) is somewhat involved and it admits a very large number of ways of
-applying the decomposition. To keep our search space of decompositions feasible, we limit to standard
-application of the tensor-train.
+applying the decomposition. To keep our search space of decompositions feasible, we consider only
+the straight-forward application of the tensor-train.
 
 \subsubsection{Description}
 The tensor-train decomposition (TT-decomposition) of a general tensor \(\tensor{X}\) with
@@ -697,8 +722,8 @@ product of slices of three-way tensors (so a product of matrices):
 If dimension \(j\) is of size \(n_j\), then \(\tensor{G}[j]\) is size 
 \(r_{j-1} \times n_j \times r_{j}\) so that each slice \(\mat{G}[j]_{\midbullet i \midbullet}\)
 is size \(r_{j-1} \times r_{j}\). The collection of \(r_i\) is the `tt-rank' of the
-decomposition and controls the number of parameters. In order to make the result of the chain
-of matrix products a scalar, we have to ensure \(r_0 = r_d = 1\) \autocite{Osedelets2011}.
+decomposition and controls the number of parameters. In order to ensure the result of the chain
+of matrix products is a scalar, it must be that \(r_0 = r_d = 1\). \autocite{Osedelets2011}
 
 The three-way case presents no obvious simplifications from the general case but we present it
 here to ensure consistent notation through the remainder of this section. The TT-decomposition
@@ -719,7 +744,7 @@ As this decomposition only contains contractive products, it is very well expres
 Network diagram. Figure~\ref{fig:tttnds} shows both the general case and the three-way case --
 the general case shows clearly how we can build a tensor with a large number of dimensions purely
 out of relatively small three-way tensors. The Tucker decomposition is also presented to illustrate
-the similarities in the three-way case. It is also worth contrasting with figure~\ref{cp:bilintnd}
+the similarities in the three-way case. It is also worth contrasting with figure~\ref{fig:cpbilintnd}
 to see how the CP-decomposition can arise as a special case, a notion which is formalised later.
 
 \begin{figure}
@@ -780,31 +805,42 @@ tensor product, simply with a smaller tensor. We denote the product as
 	\vec{z} = \vec{x}^\mathsf{T}\mat{A}\tensor{B}\mat{C}\vec{y}.
 \end{equation} For a specific index this has the form
 \begin{align} \label{eq:tt_bilin_index}
-	z_j &= \vec{x}^\mathsf{T}\vec{A}\mat{B}_{\midbullet j \midbullet}\mat{C}\vec{y}\\
-		&= \sum_{i=1}^{I}\sum_{k=1}^K\sum_{m=1}^{r_1}\sum_{n=1}^{r_2}A_{im}B_{mjn}C_{nk}x_iy_k.
+	z_j &= \tran{\vec{x}}\vec{A}\mat{B}_{\midbullet j \midbullet}\mat{C}\vec{y}\\
+		&= \sum_{i}^{n_1}\sum_{k}^{n_3}
+		\sum_{\alpha_1}^{r_1}
+		\sum_{\alpha_2}^{r_2}A_{i\alpha_1}B_{\alpha_1j\alpha_2}C_{\alpha_2k}x_iy_k.
 \end{align}
 
-This provides a clear intuition about what the TT-decomposition is doing in the three-way case.
+Eq.~\eqref{eq:tt_bilin} provides a clear intuition about what the TT-decomposition is doing in 
+the three-way case.
 Matrices \(\mat{A}\) and \(\mat{C}\) project the inputs into a new (potentially smaller) space
 where the bilinear product is carried out with \(\tensor{B}\) ensuring the result has been pushed
 back to the appropriate size.
 
 
 \subsubsection{Gradients}
-\hl{Should do all at once?}
-In the TT-decomposition the gradients are very similar.
 The gradient of \(\vec{z}\) with respect to \(\mat{A}\) has entries of the form:
 \begin{align}
 	\frac{\partial z_j}{\partial A_{lm}} 
-		&= x_l \cdot \left(\vec{B}_{mj\midbullet}^\mathsf{T}\mat{C}\vec{y}\right). \\
+	    &= \sum_{k}^{n_3}
+		\sum_{\alpha_2}^{r_2}B_{m j\alpha_2}C_{\alpha_2k}x_ly_k\\
+		&= x_l \cdot \left(\tran{\vec{B}_{mj\midbullet}}\mat{C}\vec{y}\right). \\
 \intertext{The components of the gradient with respect to \(\mat{C}\) have a similar form:}
-	\frac{\partial z_j}{\partial C_{ml}} 
-		&= y_l \cdot \left(\vec{B}_{\midbullet jm}^\mathsf{T}\mat{A}\vec{x}\right). \\
-\intertext{While the gradient of the elements of \(\tensor{B}\) behave surprisingly similarly
+	\frac{\partial z_j}{\partial C_{lm}} 
+		&= \sum_{i}^{n_1}
+		\sum_{\alpha_1}^{r_1}A_{i\alpha_1}B_{\alpha_1jl}x_iy_m \\
+		&= y_m \cdot \left(\tran{\vec{B}_{\midbullet jl}}\mat{A}\vec{x}\right). \\
+\intertext{While the gradient of the elements of \(\tensor{B}\) behave similarly
 	to the CP-decomposition:}
 	\frac{\partial z_j}{\partial B_{lmn}} 
-		&= \mathbb{I}_{m = j} \cdot \left( \mat{A}\vec{x} \odot \mat{C}\vec{y}\right).
+		&= \sum_{i}^{n_1}\sum_{k}^{n_3}
+		A_{il}C_{nk}x_iy_k. \\
 \end{align}
+This is very similar to the CP-decomposition, very little further can be added. Again the central
+object -- which is in this case a three-way tensor -- has highly redundant gradients, although it
+is not clear what effect this may have on learning. Finally, there is slightly more summation
+in the tensor-train, but it does not appear to be a dramatic enough recasting to avoid any
+potential instabilities due to the proliferation of multiplicative dynamics in the gradients.
 
 
 \subsection{Comparison}
@@ -1092,10 +1128,13 @@ obtainable in the TT-decomposition.
 	\label{fig:correlate-multiply}
 \end{figure}
 
+\subsection{XOR}
+Should go here?
+
 \subsection{Separating Style and Content}
 In this section we apply the tensor decompositions to a less trivial task. In particular, we
-address the \textit{extrapolation} problem presented by Tenenbaum and Freeman 
-\autocite{Tenenbaum2000}. The focus in this task in on data that is naturally presented as a
+address the \textit{extrapolation} problem presented by Tenenbaum and 
+Freeman. \autocite{Tenenbaum2000} The focus in this task in on data that is naturally presented as a
 function of two factors, termed \textit{style} and \textit{content}. Tennenbaum and Freeman
 propose the use of bilinear models for such data as follows.
 
