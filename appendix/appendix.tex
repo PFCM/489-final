@@ -1,0 +1,27 @@
+% !TEX root = ../proj_report_outline.tex
+\chapter{Additional Proofs}
+\begin{prop} [Identity Tensor] \label{prop:identity}
+	\(\tensor{H} \in \mathbb{R}^{N \times N \times N}\) such that
+\begin{align}
+\vec{x}^\mathsf{T}\tensor{H}\vec{y} = \vec{x} \odot \vec{y}, 
+&&\forall \vec{x},\vec{y} \in \mathbb{R}^{N}
+\end{align} implies
+\begin{equation}
+	H_{ijk} = \begin{cases}
+		1 & \text{if}\;\;i = j = k \\
+		0 & \text{otherwise.}
+	\end{cases}
+\end{equation}
+
+\end{prop}
+\begin{proof}
+We prove briefly, by inspecting one component of the result. Let 
+\(\vec{z} = \vec{x}^\mathsf{T}\tensor{H}\vec{y}\). Then
+\begin{align}
+	z_j &= \vec{x}^\mathsf{T}\mat{H}_{\midbullet j \midbullet}\vec{y} \\
+		&= \sum_i^N\sum_k^N x_iH_{ijk}y_k
+\end{align}
+If \(z_j = x_jy_j\) as in the elementwise product, then it is clear we want \(H_{ijk}\) to be 
+1 if \(i=j=k\). Further, if we ensure \(H_{ijk}\) is 0 when this is not the case we can see that
+the rest of the terms in the sums will disappear.
+\end{proof}
