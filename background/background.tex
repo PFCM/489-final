@@ -412,4 +412,59 @@ require constant prediction should be better suited to networks with an ability 
 that is no longer relevant.
 
 \subsection{Tensors in Neural Networks}
-Including gated networks, MRNN and so on.
+The final set of related works provide the key motivation for the next section. In general, many of
+the above architectures contain multiplicative gates. Multiplicative gating structures are not novel,
+introduced by Hinton as early as 1981. \autocite{Hinton1981} Sigaud et al. separate modern uses into
+two categories based on the intuition behind the application. \autocite{Sigaud2015} The first class
+seeks to use the gate in a manner akin to a transistor in a digital circuit, seeking to switch the
+flow of information between computational units on or off. This captures the way such connections are
+used in LSTMs as well as their feed-forward cousins Highway Networks. \autocite{Srivastava2015} The
+second class of gated networks aims to implement a multiplicative connection between inputs. The
+latter class strictly generalises the former. Intuitively, the former class captures those models
+where two inputs to a computational unit are multiplied before they are processed, while the second
+admits some transformations before the multiplication is realised. Two excellent reviews can be
+found in \autocite{Memisevic2011, Sigaud2015} and rather than repeat in detail the history we
+attempt to bring out the most salient examples which make clear the intuitions behind incorporating
+multiplicative interactions. Finally, we mention a few particularly very recent applications
+that have achieved significant successes after publication of the aforementioned reviews.
+
+The earliest examples of multiplicative interactions in the context of the current Deep Learning
+movement is in the Gated Boltzmann machine \autocite{Memisevic2007} which generalised Restricted
+Boltzmann Machines \autocite{Smolensky1986} (a class of probabilistic graphical models very closely
+related to neural networks) to model conditional relationships between pairs of images. These 
+parameterise a multiplicative connection with a three-way tensor \(\tensor{W}\).
+The likelihood of a hidden state
+being \(1\) given a pair of inputs \(\vec{x}\) and \(\vec{y}\) is defined as
+\begin{equation}\label{eq:grbm}
+	p(h_k | \vec{x},\vec{y}) = \sigma\left(\sum_{ij} W_{ijk}x_iy_j \right)
+\end{equation} where \(\sigma(\cdot)\) is the sigmoid discussed earlier. \autocite{Memisevic2007}
+This architecture very naturally extends the operation of a feed-forward network to deal with
+two inputs (compare equations \eqref{eq:perceptron} and \eqref{eq:grbm}), but the size of the
+tensor \(\tensor{W}\) is a serious limitation. This work outlines three key points: 
+multiplicative interactions are somehow a natural way of handling multiple distinct inputs,
+multiplicative interactions are properly parameterised by tensors
+and tensors can be prohibitively large.
+This last point is addressed in later works in the same field by factorising the tensor into three
+matrices. \autocite{Taylor, Memisevic2010}.
+
+The Multiplicative RNN \autocite{Martens2011a, Sutskever2013} picks up both the notion that
+multiplicative interactions are sensible ways to model interactions between two inputs and the
+factorisation from the above. Applied in a language modelling context, the reasoning is that it
+makes sense to allow the current input symbol to affect the recurrent transition matrix. These MRNNs
+achieved significant results, especially when combined with Hessian Free \autocite{Martens2011},
+a method of approximating second order optimisation.
+
+Very recent methods have revisited a number of these ideas, although often with little to no mention
+of the underlying tensorial structure. Of note is the Multiplicative Integration RNN which proposes
+adjusting the building block of eq.~\eqref{eq:vanillarnn} to use element-wise multiplication instead
+of addition. \autocite{Wu2016}
+ This corresponds to factorising the tensor into two matrices and has an extreme gating
+effect, especially during back-propagation.
+In order to successfully learn, it was found necessary to add additional bias terms to the
+point where the final model required four weight matrices and five bias vectors per unit. In some
+experiments they incorporate this approach into an LSTM, leading to a model which would have nearly
+\(16\) times the parameters of the simplest RNN proposed by eq.~\eqref{eq:vanillarnn}. We suggest
+that paying more attention to the tensorial structure of the desired interaction would lead to more
+thoroughly grounded models, and propose one such model in chapter~\ref{C:arch}.
+
+
