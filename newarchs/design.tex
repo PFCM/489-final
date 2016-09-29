@@ -1,4 +1,30 @@
+% !TEX root = ../proj_report_outline.tex
+
 \chapter{Proposed Architectures}\label{C:arch}
+In this chapter we use the intuitions gathered from related works to propose novel classes of
+architectures employing tensor decompositions to implement multiplicative connections. 
+
 \section{Incorporating tensors for expressivity}
+
+\subsection{Biases}
+
+
+\section{Forgetting}
 \section{Gates and Long Time Dependencies}
 \section{Proposed RNNs}
+We now formalise the classes of architectures using the above notions.
+
+\subsection{Generalised Multiplicative RNN}
+The simplest architecture way to incorporate a decomposed tensor is to use it to generalise the
+Multiplicative RNN and Multiplicative Integration RNN. \autocite{Martens2011a, Wu2016}
+To do this, we simply replace the various linear operations with a bilinear form with appropriate
+biases:
+\begin{equation}\label{eq:gmrnn}
+	\vec{h}_t = \tau\left( \tran{\tilde{\vec{x}}_t}\tilde{\tensor{W}}\tilde{\vec{h}}_{t-1} \right)
+\end{equation}
+Choosing to keep the biases elements separate from the decomposition gives a form which captures
+vanilla additive RNNs as well as several types of multiplicative RNNs:
+\begin{equation}\label{eq:gmrnnbias}
+	\vec{h}_t = \tau\left(\tran{\vec{x}_t}\tensor{W}\vec{h}_{t-1}
+		+ \mat{U}\vec{h}_{t-1} + \mat{V}\vec{x}_t\right)
+\end{equation}

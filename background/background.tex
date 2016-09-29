@@ -314,6 +314,21 @@ it was already capable of. That significant extra structures need to be added to
 train it to express such behaviours seems to suggest that a more fundamental change in the model
 would be wise.
 
+A closely related approach is augmenting RNNs to add an attention mechanism. This is especially
+popular in translation tasks, in which a common approach is to use two separate RNNs in an
+\emph{encoder-decoder} arrangement where the first network encodes the sentence into a fixed length
+vector and the second expands the vector into a new sentence in a different language.
+\autocite{Cho2014b, Luong2016} Content-based attention is often used to improve these models, 
+by allowing the decoder access to all previous states of the encoder via a weighted sum. Weights
+are derived from similarities between each encoder state and a vector produced by the decoder at
+each step. \autocite{Chan2015, Bahdanau2015}
+
+While this achieves excellent performance at
+extraordinary scale \autocite{Wu2016a}, it also requires computing similarities for every step of the
+output with every step of the input, which will scale quadratically in sentence length. Consequently,
+it seems like a useful avenue of research to allow the encoder RNN to learn a more useful reduced
+representation of the sentence to remove the need for the attention mechanism.
+
 A simpler recent architecture of note is the Unitary Evolution RNN
 \autocite{Arjovsky2015} which guarantee the eigenvalues of the recurrent weight matrix have a
 magnitude of one. While this leads to provably non-vanishing or exploding gradients, in
@@ -322,7 +337,13 @@ This is potentially due to the seemingly ad-hoc composition of unitary operators
 unconstrained optimisation of parameters while maintaining the desired properties of the
 recurrent matrix.
 
-\hl{Strongly Typed}
+Another principled way to approach the design of RNNs is to use \emph{strongly typed} architectures.
+\autocite{Balduzzi2016} This approach is inspired by the desire to alter the main source of problems
+in classic RNNs -- the recurrent weight matrix. The argument is that continually applying the same
+weight matrix to the hidden states leads to incoherent features in the hidden state. The solution is
+to attempt to \emph{diagonalise} the state updates. This corresponds to ensure all operations on the
+hidden state apply elementwise, and that the input should be the only item projected through weight
+matrices. \hl{there is probably more to say?}
 
 Another line of enquiry which can help with long time-dependencies focuses on the initialisation
 of the network. IRNNs \autocite{Le2015}, which simply initialise the recurrent weights matrix to the
@@ -466,5 +487,10 @@ experiments they incorporate this approach into an LSTM, leading to a model whic
 \(16\) times the parameters of the simplest RNN proposed by eq.~\eqref{eq:vanillarnn}. We suggest
 that paying more attention to the tensorial structure of the desired interaction would lead to more
 thoroughly grounded models, and propose one such model in chapter~\ref{C:arch}.
+
+LSTM-style gating also continues to receive attention, being employed in Gated-Attention Readers
+to combine representations of questions and potential answers. \autocite{Dhingra2016} It is also used
+in PixelCNN and WaveNet \autocite{VandenOord2016, Oord2016}, allowing to model to choose how
+particular features propagate upwards through layers.
 
 
