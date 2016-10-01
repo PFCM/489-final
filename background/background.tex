@@ -1,8 +1,7 @@
 % !TEX root = ../proj_report_outline.tex
 
 \chapter{Background and Related Work}\label{C:bg}
-\section{Background}
-\subsection{Feed-Forward Neural Networks}
+\section{Feed-Forward Neural Networks}
 Feed-forward neural networks are a class of parameterised function approximators which consist of
 artificial neurons arranged in layers. They arise from generalisations of the perceptron
 \autocite{Rosenblatt1958},
@@ -52,18 +51,18 @@ and then using another set of weights compute a new transformation of it to get 
 
 Although it can not increase the class of functions a neural network can approximate, it is often
 beneficial in practice to increase the depth as this can allow to express more complex relationships
-with only a moderate increase in parameters to be learned. \autocite{Telgarsky2016} This is done
+with only a moderate increase in parameters to be learned \autocite{Telgarsky2016}. This is done
 by recursively applying the above transform with a fresh set of weights and biases. Omitting the
 biases for clarity this gives us the following for a network with \(l-1\) hidden layers:
 \begin{equation}
 	\hat{\vec{y}} = \mat{W}^{(l)}f(\mat{W}^{(l-1)}f(\dots f(\mat{W}^{(1)}\vec{x}))).
 \end{equation} Naively adding depth in this fashion can cause the network to become very challenging
-to train. \autocite{Glorot2010, Saxe2013} Several methods have been proposed which successfully
+to train \autocite{Glorot2010, Saxe2013}. Several methods have been proposed which successfully
 alleviate this, such as layer-wise pre-training \autocite{Hinton2006,Vincent2010} and more
 recently residual connections which change the structure of the graph to allow better flow of 
-information. \autocite{He2015}
+information \autocite{He2015}.
 
-\subsubsection{Training}
+\subsection{Training}
 These networks are typically trained in a supervised fashion. Denote the parameters of the network
 \(\theta = \{\mat{W}^{(l)}, \ldots, \mat{W}^{(1)}, \vec{b}^{(l)}, \ldots, \vec{b}^{(l)}\}\) and
 the output of the network for a given input \(\vec{x}\) and set of parameters as 
@@ -82,8 +81,9 @@ to a real number, such that \(\mathcal{L}(\vec{y}, \hat{\vec{y}}) = 0\) implies
 	= \sum_d (y_d - \hat{y}_d)^2
 \end{equation} or the cross entropy
 \begin{equation}
-	\mathcal{L}_{CE}(\vec{y}, \hat{\vec{y}}) = -\sum_d y_d \log(\hat{y}_d).
-\end{equation} The cross entropy is typically preferred when the targets can be interpreted as
+	\mathcal{L}_{CE}(\vec{y}, \hat{\vec{y}}) = -\sum_d y_d \log(\hat{y}_d),
+\end{equation} ensuring some safeguards are put in place to avoid attempting to compute \(\log 0\).
+The cross entropy is typically preferred when the targets can be interpreted as
 probabilities.\footnote{For example, discrete class labels -- we can convert them to a one-of-\(n\)
 (often termed ``one-hot'') taking discrete labels between 1 and \(n\) to \(n\) dimensional vectors
 with \(0\) in all positions bar one, which has its element set to \(1\). We can then view these
@@ -110,15 +110,15 @@ to the \(\mat{W}\). Typically the gradient is evaluated over a small subset or `
  of the data per iteration which is akin to using a noisy estimate of the true gradient.
 The gradients of deep networks can be calculated using \emph{back-propagation}, which amounts
 to the chain rule of calculus and the observation that neural networks consist of many
-composed functions. \autocite{Rumelhart1986} In practice this is assisted greatly by software
+composed functions \autocite{Rumelhart1986}. In practice this is assisted greatly by software
 packages which can determine the derivatives of a given function using automatic or symbolic
 differentiation such as Tensorflow \autocite{Abadi2015} or Theano
-. \autocite{TheTheanoDevelopmentTeam2016}
+ \autocite{TheTheanoDevelopmentTeam2016}.
 
-\hl{Mention improved SGDs? Adagrad, Adam, RMSProp?}
+%\hl{Mention improved SGDs? Adagrad, Adam, RMSProp?}
 
 
-\subsection{Recurrent Neural Networks}
+\section{Recurrent Neural Networks}
 Recurrent Neural Networks (RNNs) of the form considered here generalise feed-forward networks to
 address problems in which we wish to map a \emph{sequence} of inputs 
 \(\vec{x} = (\vec{x}_1, \vec{x}_2, \dots \vec{x}_T) \) to a sequence of outputs
@@ -129,7 +129,7 @@ recognition \autocite{Graves2006}, polyphonic music
 modelling \autocite{Boulanger-Lewandowski2012}, music classification \autocite{Choi2016},
 image generation \autocite{Gregor2015}, automatic captioning \autocite{Vinyals2016, Xu2015}  and more.
 
-\subsubsection{Classical Formulation}
+\subsection{Classical Formulation}
 An RNN is able to maintain context over a sequence by transferring its hidden state from one
 time-step to the next. We refer to the vector of states at time \(t\) as \(\vec{h}_t\).
 The classic RNN (often termed ``vanilla'') originally proposed in \autocite{Elman1990}
@@ -147,7 +147,7 @@ Equation \eqref{eq:vanillarnn} bears a striking resemblance to the building bloc
 feed-forward network. The key difference is the (square) matrix \(\mat{W}\) which contains weights
 controlling how the previous state affects the computation of the new activations.
 
-\subsubsection{Training}
+\subsection{Training}
 We can train this (or any of the variants we will see subsequently) using back-propagation.
 Often termed ``Back Propagation Through Time'' \autocite{Werbos1990} which requires using the
 chain rule to determine the gradients of the loss with respect to the network parameters in
@@ -195,7 +195,8 @@ We can now derive an update rule for the parameters by observing
 {\Large shapes, get them right}\\
 and applying the above. For the input matrix and the bias the process is the same.
 
-\subsubsection{Issues}
+\subsection{Issues with Vanilla RNNs}
+\subsubsection{Vanishing and Exploding Gradients}
 Equation~\eqref{eq:bptt-v} reveals a key pathology of the vanilla RNN -- vanishing gradients.
 This occurs when the gradient of the loss vanishes to a negligibly small value as we
 propagate it backward in time, leading to a negligible update to the weights.
@@ -212,6 +213,12 @@ In the non-linear case, this remains a serious issue. While exploding gradients 
 mitigated by using a \emph{saturating} non-linearity so that the gradient tends to zero as the
 hidden states grow, this only exacerbates the vanishing problem. 
 
+The key symptom of vanishing gradients in RNNs is that it makes it much harder to learn to
+store information for long time periods \autocite{Bengio1994}. This makes RNNs often struggle to
+solve simple-seeming tasks in which the solution requires remembering an input for many
+time-steps. 
+
+\subsubsection{Butterfly Effect}
 A second issue when training RNNs can be illustrated by viewing them as iterated non-linear	
 dynamical systems and thus susceptible to the ``butterfly effect'': seemingly negligible changes
 in initial conditions can lead to catastrophic changes after a number of iterations
@@ -222,7 +229,7 @@ increases in loss. This problem is not as well studied as vanishing gradients al
 partial solutions exist such as clipping the norm of gradients \autocite{Pascanu2012} or
 using a regulariser to encourage gradual changes in hidden state \autocite{Krueger2016}.
 
-\subsubsection{Alternate Architectures}
+\section{Popular Alternatives: LSTM and GRU}
 To address these fundamental problems a number of alternate architectures have been proposed.
 Here we will outline two popular variants: the Long Short Term Memory (LSTM) and the Gated
 Recurrent Unit (GRU). Both of these belong to a class of \emph{gated} RNNs, which have a
@@ -282,19 +289,26 @@ now commonly used to address the vanishing gradient problem in very deep feed-fo
 this perspective -- this will be analysed in detail in chapter~\ref{C:arch}.
 
 
-\section{Related Work}
-\subsection{Long Time Dependencies}
-The key symptom of vanishing gradients in RNNs is that it makes it much harder to learn to
-store information for long time periods \autocite{Bengio1994}. This makes RNNs often struggle to
-solve simple-seeming tasks in which the solution requires remembering an input for many
-time-steps. There are two main categories of solutions to this issue -- architectural and
-algorithmic.
+\section{Other Ideas}
+While the LSTM and the GRU are by far the most popular RNN architectures, many other solutions
+have been proposed to the problems that plague the Vanilla RNN. We divide these into two categories:
+training and memory augmentation. Training solutions focus on adjusting the structure of the RNN or
+the training algorithm to avoid vanishing or exploding gradients and hence allow it to learn to solve
+difficult tasks. Memory augmentation approaches view an RNN as a device which interacts with a
+memory (in the form of its hidden states) and either augment the memory with additional
+structures or impose specific access patterns to encourage more appropriate use of this memory.
+
+\subsection{Enhancing Training}
+Methods of addressing issues when training RNNs can be further divided into two categories:
+architectural and algorithmic.
+Architectural solutions, such as the LSTM and GRU, seek to alter
+the way in which hidden states are calculated. Algorithmic solutions look to change the training
+process itself to better avoid or handle the various pathologies. These are complementary lines of
+enquiry -- advanced architectures can still benefit from more sophisticated training techniques.
 
 \subsubsection{Architectural Solutions}
-These attempts to solve the problem focus on alleviating the issue by changing the manner in which
-hidden states are calculated. The aforementioned LSTM and GRU are the most widespread, but
-several alternatives have been proposed. 
-An early attempt to solve the problem involves feeding inputs to different units at different
+An early attempt to solve the vanishing gradient problem involves feeding inputs to different units
+at different
 rates. The primary motivation for this seems to be to force the network to attend to longer
 time-scales by passing some parts of it information at a slower rate, although the authors note an
 intuition that more abstract representations of the sequence will change slower and hence not
@@ -321,7 +335,7 @@ vector and the second expands the vector into a new sentence in a different lang
 \autocite{Cho2014b, Luong2016} Content-based attention is often used to improve these models, 
 by allowing the decoder access to all previous states of the encoder via a weighted sum. Weights
 are derived from similarities between each encoder state and a vector produced by the decoder at
-each step. \autocite{Chan2015, Bahdanau2015}
+each step \autocite{Chan2015, Bahdanau2015}.
 
 While this achieves excellent performance at
 extraordinary scale \autocite{Wu2016a}, it also requires computing similarities for every step of the
@@ -343,7 +357,7 @@ in classic RNNs -- the recurrent weight matrix. The argument is that continually
 weight matrix to the hidden states leads to incoherent features in the hidden state. The solution is
 to attempt to \emph{diagonalise} the state updates. This corresponds to ensure all operations on the
 hidden state apply elementwise, and that the input should be the only item projected through weight
-matrices. \hl{there is probably more to say?}
+matrices.
 
 Another line of enquiry which can help with long time-dependencies focuses on the initialisation
 of the network. IRNNs \autocite{Le2015}, which simply initialise the recurrent weights matrix to the
@@ -356,8 +370,8 @@ on final performance after training, it is important to note the significant res
 especially as they are likely to at least be partially transferable to any given architecture.
 
 \subsubsection{Algorithmic Solutions}
-The second class of attempts to address the issue focuses on techniques for training the network
-that help overcome the problems with the gradients. The first of this is to use approximate
+The second class of attempts to address the issue focuses on techniques for training the network.
+ The first of these is to use approximate
 second-order methods to try and rescale the gradients appropriately. A number of notable attempts
 used Hessian-Free Optimization \autocite{Martens2011, Boulanger-Lewandowski2012} and achieved
 remarkable results. Perhaps more interestingly, it was subsequently found that many of the results
@@ -369,10 +383,17 @@ dependencies is to add a regularisation term into the loss to penalise the diffe
 successive hidden states \autocite{Krueger2016}. This encourages the network to learn smooth
 transitions and may help it ``bootstrap'' itself past the vanishing gradients.
 
+A notable recent work applies the recently proposed path-SGD \autocite{Neyshabur2015} to Vanilla
+RNNs with ReLU activations. This involves re-casting the RNN as a very deep feed-forward network with
+shared weights across times-steps. The authors then regularise the update based on the scale of
+the individual paths through the network. This allows them to achieve significant results with an
+architecture that is otherwise very challenging to train -- the linear rectifier is unbounded in
+one direction which typically leads rapidly to exploding gradients \autocite{Neyshabur2016}.
+
 
 \subsection{Memory}
-Another line of research which attempts to enhance the capabilities of RNNs focuses on augmenting
-them with additional memory structures. There are two key motivations for this kind of work. 
+This line of research attempts to enhance the capabilities of RNNs by focusing on the way they
+interact with their memory. There are two key motivations for this kind of work. 
 One aim is to decouple the memory from the network so that it can store and interact with arbitrary
 quantities of information. The second is related to vanishing gradients in the hope that a novel
 method of storing or addressing information will be more robust to long time delays.
@@ -415,7 +436,6 @@ Unfortunately simply adjusting the network to sue such a reduced representation 
 good performance and a number of complicating factors had to be incorporated, including keeping many
 redundant copies of memory which diminishes somewhat the elegance of the solution.
 
-
 Many of these ideas seem to be founded on an intuition which has not been clearly formalised. In
 general, the task of an RNN is to learn a mapping from one sequence to another sequence one step at
 a time using an intermediate memory (the hidden states). Intuitively a solution must consist of
@@ -432,14 +452,14 @@ more accumulative solutions. Conversely, tasks which may not even have a fixed l
 require constant prediction should be better suited to networks with an ability to forget information
 that is no longer relevant.
 
-\subsection{Tensors in Neural Networks}
+\section{Tensors in Neural Networks}
 The final set of related works provide the key motivation for the next section. In general, many of
 the above architectures contain multiplicative gates. Multiplicative gating structures are not novel,
-introduced by Hinton as early as 1981. \autocite{Hinton1981} Sigaud et al. separate modern uses into
-two categories based on the intuition behind the application. \autocite{Sigaud2015} The first class
+introduced by Hinton as early as 1981 \autocite{Hinton1981}. Sigaud et al. separate modern uses into
+two categories based on the intuition behind the application \autocite{Sigaud2015}. The first class
 seeks to use the gate in a manner akin to a transistor in a digital circuit, seeking to switch the
 flow of information between computational units on or off. This captures the way such connections are
-used in LSTMs as well as their feed-forward cousins Highway Networks. \autocite{Srivastava2015} The
+used in LSTMs as well as their feed-forward cousins Highway Networks \autocite{Srivastava2015}. The
 second class of gated networks aims to implement a multiplicative connection between inputs. The
 latter class strictly generalises the former. Intuitively, the former class captures those models
 where two inputs to a computational unit are multiplied before they are processed, while the second
@@ -458,7 +478,7 @@ The likelihood of a hidden state
 being \(1\) given a pair of inputs \(\vec{x}\) and \(\vec{y}\) is defined as
 \begin{equation}\label{eq:grbm}
 	p(h_k | \vec{x},\vec{y}) = \sigma\left(\sum_{ij} W_{ijk}x_iy_j \right)
-\end{equation} where \(\sigma(\cdot)\) is the sigmoid discussed earlier. \autocite{Memisevic2007}
+\end{equation} where \(\sigma(\cdot)\) is the sigmoid discussed earlier \autocite{Memisevic2007}.
 This architecture very naturally extends the operation of a feed-forward network to deal with
 two inputs (compare equations \eqref{eq:perceptron} and \eqref{eq:grbm}), but the size of the
 tensor \(\tensor{W}\) is a serious limitation. This work outlines three key points: 
@@ -466,7 +486,7 @@ multiplicative interactions are somehow a natural way of handling multiple disti
 multiplicative interactions are properly parameterised by tensors
 and tensors can be prohibitively large.
 This last point is addressed in later works in the same field by factorising the tensor into three
-matrices. \autocite{Taylor, Memisevic2010}.
+matrices \autocite{Taylor, Memisevic2010}.
 
 The Multiplicative RNN \autocite{Martens2011a, Sutskever2013} picks up both the notion that
 multiplicative interactions are sensible ways to model interactions between two inputs and the
@@ -478,7 +498,7 @@ a method of approximating second order optimisation.
 Very recent methods have revisited a number of these ideas, although often with little to no mention
 of the underlying tensorial structure. Of note is the Multiplicative Integration RNN which proposes
 adjusting the building block of eq.~\eqref{eq:vanillarnn} to use element-wise multiplication instead
-of addition. \autocite{Wu2016}
+of addition \autocite{Wu2016}.
  This corresponds to factorising the tensor into two matrices and has an extreme gating
 effect, especially during back-propagation.
 In order to successfully learn, it was found necessary to add additional bias terms to the
@@ -489,8 +509,12 @@ that paying more attention to the tensorial structure of the desired interaction
 thoroughly grounded models, and propose one such model in chapter~\ref{C:arch}.
 
 LSTM-style gating also continues to receive attention, being employed in Gated-Attention Readers
-to combine representations of questions and potential answers. \autocite{Dhingra2016} It is also used
+to combine representations of questions and potential answers \autocite{Dhingra2016}. It is also used
 in PixelCNN and WaveNet \autocite{VandenOord2016, Oord2016}, allowing to model to choose how
 particular features propagate upwards through layers.
+
+It is important to realise that all of these multiplicative structures have an inherent tensor
+structure, whether it is made implicit or not. In chapter~\ref{C:tens} we investigate with more
+rigour the types of tensor products which generalise many of these multiplicative interactions.
 
 
