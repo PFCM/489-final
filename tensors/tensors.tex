@@ -1050,7 +1050,7 @@ The aim for this experiment is to compare the two decompositions. There are two 
 investigate: learning a decomposed tensor when the tensor has the same structure as the data and
 learning a decomposed tensor when it is incapable of representing exactly the underlying structure. 
 
-\subsubsection{Experimental Details}
+\subsubsection{Experiment Details}
 The first test uses the following procedure: generate a fixed random tensor \(\tensor{T}\)
 in the chosen decomposition with rank \(r_T\). Then generate a second tensor \(\tensor{W}\) 
 with rank \(r_W\). At each stage \(t\) generate a pair of random input vectors \(\vec{x}_t\) and
@@ -1148,7 +1148,7 @@ such a product. We are particularly concerned with this as generalising this ope
 significant motivation for the current investigation.
 
 
-\subsubsection{Experimental Details}
+\subsubsection{Experiment Details}
 Learning exact element-wise products is a special case and can clearly be done with the 
 CP-decomposition without sacrificing parameter reduction. The question that remains is how closely
 a given decomposition can approximate an element-wise product, especially if there is some kind of
@@ -1241,7 +1241,53 @@ obtainable in the TT-decomposition.
 \end{figure}
 
 \subsection{XOR}
-Should go here?
+\subsubsection{Goal}
+Theoretical results suggest that a single tensor layer should be able to solve the exclusive-or problem.
+This is known to be impossible with a single normal feed-forward layer, so if the tensor layer is successful
+in this task it would provide a useful demonstration of the difference in expressive power.
+
+\subsubsection{Experiment Details}
+The truth table for exclusive-or operation can be found in table~\ref{tab:xor}. True values were represented
+as \(1\) and false as \(0\). As there are only four data points, all were evaluated for each parameter update.
+All models were trained using standard gradient descent with a learning rate of \(0.5\).
+
+Three models were evaluated, a perceptron, a multi-layer perceptron (MLP) and a single layer tensor. All
+models used a sigmoid nonlinearity on the output, while the MLP had 4 hidden units also with sigmoids. Models
+were trained to minimise the cross-entropy, averaged across the data points. Models were trained for \(1000\)
+epochs, this was enough to see the differences in performance.
+
+\subsubsection{Results}
+
+\begin{figure}
+\begin{floatrow}
+\floatbox{table}
+  {%
+   \begin{tabu} to 0.3\textwidth {|X|X||X|}
+	\hline
+	Input 1 & Input 2 & Output \\
+	\hline\hline
+	T & T & F \\
+	T & F & T \\
+	F & T & T \\
+	F & F & F \\
+	\hline
+	\end{tabu}%
+  }
+  {%
+   \caption{Exclusive-or truth table}
+   \label{tab:xor}%
+  }
+\ffigbox{%
+\centering
+\includegraphics[width=0.45\textwidth]{tensors/xor}
+}{%
+ \caption[XOR results]{Exclusive-or results. Bold line is the mean of 50 runs, shading indicates the
+minimum and maximum across all runs. Baseline cross entropy is 0.6931, corresponding to outputting
+0.5 for all input (or guessing uniformly at random).}
+
+}
+\end{floatrow}
+\end{figure}
 
 \subsection{Separating Style and Content}
 \subsubsection{Goal}
@@ -1252,7 +1298,7 @@ function of two factors, termed \textit{style} and \textit{content}. Tennenbaum 
 propose the use of bilinear models for such data as follows. The aim is to verify that we
 can learn a tensor decomposition of an unknown latent tensor with unknown rank.
 
-\subsubsection{Experimental Details}
+\subsubsection{Experiment Details}
 \paragraph{Problem Formulation}
 Let \(\vec{y}_{sc}\) be an observation vector with style \(s\) and content \(c\). It is modelled
 in bilinear form:
