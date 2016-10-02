@@ -131,7 +131,7 @@ image generation \autocite{Gregor2015}, automatic captioning \autocite{Vinyals20
 
 \subsection{Classical Formulation}
 An RNN is able to maintain context over a sequence by transferring its hidden state from one
-time-step to the next. We refer to the vector of states at time \(t\) as \(\vec{h}_t\).
+time step to the next. We refer to the vector of states at time \(t\) as \(\vec{h}_t\).
 The classic RNN (often termed ``vanilla'') originally proposed in \autocite{Elman1990}
 computes its hidden states with the following recurrence:
 \begin{equation}
@@ -160,9 +160,9 @@ the form
 				\vec{y}_1, \vec{y}_2, \dots, \vec{y}_T)
 	= \sum_{i=1}^T \mathcal{L}_i(\hat{\vec{y}}_i, \vec{y}_i),
 	\label{eq:seqloss}
-\end{equation} which is a sum of the loss accrued at each time-step. This captures all common
+\end{equation} which is a sum of the loss accrued at each time step. This captures all common
 cases including sequence classification or regression, as the \(\mathcal{L}_i\) may simply return
-\(0\) for all but the last time-step. To find gradients of the loss with respect the parameters
+\(0\) for all but the last time step. To find gradients of the loss with respect the parameters
 which generate the hidden states, we must first find the gradient of the loss with respect to the
 hidden states themselves. Choosing a hidden state \(i\) somewhere in the sequence we have:
 \begin{equation}
@@ -172,14 +172,14 @@ hidden states themselves. Choosing a hidden state \(i\) somewhere in the sequenc
 future losses. To determine each \(\nabla_{\vec{h_i}}\mathcal{L}_j\) (noting \(j \geq i\)), we
 apply the chain rule, to back-propagate the error from time \(j\) to time \(i\). This is the step
 from which the algorithm derives its name, and simply requires multiplying through adjacent
-timesteps. Let \(\vec{z}_k = \mat{W}\vec{h}_{t-1} + \mat{U}\vec{x}_t +  \vec{b}\) be the
+time steps. Let \(\vec{z}_k = \mat{W}\vec{h}_{t-1} + \mat{U}\vec{x}_t +  \vec{b}\) be the
 pre-activation of the hidden states. Then
 \begin{align}
 	\nabla_{\vec{h}_i} \mathcal{L}_j &= 
-	(\nabla_{\vec{h}_j})^{\mathsf{T}}\mathcal{L}_j \left(
-		\prod_{k=i+1}^j \frac{\partial \vec{h}_k}{\partial\vec{h}_{k-1}}\right)\\
-	&=  (\nabla_{\vec{h}_j}\mathcal{L}_j)^{\mathsf{T}} \left(
-		\prod_{k=i+1}^j \nabla_{\vec{z}_k}f \cdot \mat{W}\right).
+	\left(\prod_{k=i+1}^j \nabla_{\vec{h}_{k-1}} \vec{h}_k\right)
+	(\nabla_{\vec{h}_j}\mathcal{L}_j) \\
+	&=  \left(\prod_{k=i+1}^j \nabla_{\vec{z}_k}f \cdot \mat{W}\right)
+	(\nabla_{\vec{h}_j}\mathcal{L}_j).
 	\label{eq:bptt-v}
 \end{align} This has two key components: \(\nabla_{\vec{h}_j}\mathcal{L}_j\) quantifies the degree
 to which the hidden states at time \(j\) affect the loss (computing this will most likely require
@@ -187,23 +187,32 @@ further back-propagation through one or more output layers) while the second ter
 equation~\eqref{eq:bptt-v} measures how much the hidden state at time \(i\) affects the hidden
 state at time \(j\).
 
-We can now derive an update rule for the parameters by observing
+We can now derive an update rule for the parameters by observing\footnote{For clarity, when we
+consider the gradient of anything with respect to a matrix, such as \(\nabla_{\mat{W}}\mathcal{L}\)
+we implicitly vectorise the matrix. More precise notation would be
+\(\nabla_{\vect(\mat{W})}\mathcal{L}\), but this adds extra distraction into already unfortunately
+ cluttered equations. For a definition of the vectorisation operation see 
+section~\ref{sec:tensorinterps}. This means \(\nabla_{\mat{W}}\mathcal{L}\) has shape \(nn \times 1\),
+where \(n\) is the number of hidden states. Correspondingly, \(\nabla_{\mat{W}}\vec{h_j}\) has
+shape \(nn \times n\), so the shapes of the matrix multiplication in eq.~\eqref{eq:vanillaupdate}
+are appropriately defined.
+}
 \begin{align}
 	\nabla_{\mat{W}} \mathcal{L} &= \sum_{i=1}^T \nabla_{\mat{W}} \mathcal{L}_i \\
-	&= \sum_{i=1}^T\sum_{j=1}^i\nabla_{\mat{h}_j} \mathcal{L}_i \nabla_{\mat{W}} \vec{h}_j
+	&= \sum_{i=1}^T\sum_{j=1}^i(\nabla_{\mat{W}} \vec{h}_j)(\nabla_{\mat{h}_j} \mathcal{L}_i )
+	\label{eq:vanillaupdate}
 \end{align} 
-{\Large shapes, get them right}\\
-and applying the above. For the input matrix and the bias the process is the same.
+and applying the above. For the input matrix \(\mat{U}\) and the bias the process is the same.
 
 \subsection{Issues with Vanilla RNNs}
 \subsubsection{Vanishing and Exploding Gradients}
 Equation~\eqref{eq:bptt-v} reveals a key pathology of the vanilla RNN -- vanishing gradients.
 This occurs when the gradient of the loss vanishes to a negligibly small value as we
 propagate it backward in time, leading to a negligible update to the weights.
- \((\nabla_{\vec{h}_j}\mathcal{L}_j)^\mathsf{T}\) (a vector) is multiplied by a long product of
+ \(\nabla_{\vec{h}_j}\mathcal{L}_j\) (a column vector) is multiplied by a long product of
  matrices, alternating between \(\nabla_{\vec{z}_k} f\) and \(\mat{W}\). If we assume for
  illustrative purposes that \(f(\cdot)\) is the identity function (so we have a linear network),
-then the loss vector is multiplied by \(\mat{W}\) taken to the \((j-i)\)th power. If the largest
+then the loss vector is multiplied by \(\mat{W}\) taken to the \((j-i)\)-th power. If the largest
 eigenvalue of \(\mat{W}\) is large, then this will cause the gradient to eventually explode.
 If the largest eignevalue is small, then the gradient will vanish. This issue was first presented
 in 1994 \autocite{Bengio1994}, for a thorough treatment including necessary conditions 
@@ -216,7 +225,7 @@ hidden states grow, this only exacerbates the vanishing problem.
 The key symptom of vanishing gradients in RNNs is that it makes it much harder to learn to
 store information for long time periods \autocite{Bengio1994}. This makes RNNs often struggle to
 solve simple-seeming tasks in which the solution requires remembering an input for many
-time-steps. 
+time steps. 
 
 \subsubsection{Butterfly Effect}
 A second issue when training RNNs can be illustrated by viewing them as iterated non-linear	
@@ -283,7 +292,7 @@ of phrasing this is that while the vanilla RNN attempts to learn an opaque funct
 a \emph{residual} mapping \(\vec{h}_t = \mathcal{F}(\vec{x}_t, \vec{h}_{t-1}) + \vec{h}_{t-1}\).
 By itself, this would alleviate the main cause of vanishing gradients 
 \autocite{Jozefowicz2015, Hochreiter1997}. This is equivalent to adding a skip connection,
-allowing the state to skip a time-step and is directly analogous to the residual connections
+allowing the state to skip a time step and is directly analogous to the residual connections
 now commonly used to address the vanishing gradient problem in very deep feed-forward networks
 \autocite{He2015, Duvenaud2014, Szegedy2016}. Unfortunately the presence of the gate complicates
 this perspective -- this will be analysed in detail in chapter~\ref{C:arch}.
@@ -331,8 +340,8 @@ would be wise.
 A closely related approach is augmenting RNNs to add an attention mechanism. This is especially
 popular in translation tasks, in which a common approach is to use two separate RNNs in an
 \emph{encoder-decoder} arrangement where the first network encodes the sentence into a fixed length
-vector and the second expands the vector into a new sentence in a different language.
-\autocite{Cho2014b, Luong2016} Content-based attention is often used to improve these models, 
+vector and the second expands the vector into a new sentence in a different language
+\autocite{Cho2014b, Luong2016}. Content-based attention is often used to improve these models, 
 by allowing the decoder access to all previous states of the encoder via a weighted sum. Weights
 are derived from similarities between each encoder state and a vector produced by the decoder at
 each step \autocite{Chan2015, Bahdanau2015}.
@@ -403,7 +412,7 @@ A notable effort to decouple RNNs from their memory comes in Neural Turing Machi
 attend to a large matrix of memory. Addressing for both reading and writing is done via a
 address mechanism mostly based on the softmax. It was evaluated on a number of synthetic tasks
 which mostly involved accumulation such as remembering a sequence of arbitrary patterns and outputting
-them after a number of time-steps in a particular order.
+them after a number of time steps in a particular order.
 
 Subsequently, Grefenstette et al. propose a set of neural Deques, Queues and Stacks which attempt to
 address the limitations of the fixed size memory of the Neural Turing Machine 

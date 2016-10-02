@@ -3,19 +3,22 @@
 \chapter{Three-way Tensors and Bilinear Products}\label{C:tens}
 
 In order to represent functions of two arguments with neural networks, three-way tensors are 
-unavoidable. In this chapter discuss the vector-tensor-vector bilinear product. We look at various
-low-rank tensor decompositions to avoid having to store the tensor in full with a view towards
-assessing their suitability to be learnt in situ with gradient descent.
+unavoidable. In this chapter we discuss the vector-tensor-vector bilinear product and assess its
+suitability, both theoretically and empirically, to be used inside a neural network,
 
-It is also important to understand conceptually what the bilinear product does. It admits a surprising
+This product admits a surprising
 number of interpretations including theorem~\ref{thm:xor} -- that it allows us to operate on a
-pairwise exclusive-or of features. Additionally, using different tensor decompositions to represent
-the tensor corresponds to emphasising different modes of interpretation. Making these relationships
-clear is then an important step in making a principled choice of decomposition to insert into a 
-network architecture.
+pairwise exclusive-or of features. This is a powerful result which shows that admitting tensors
+into neural networks can solve the exclusive-or problem without any hidden units. Further, we
+demonstrate the expressive power of the tensor by showing that a polynomially sized network with a
+single tensor product is capable of expressing a class of functions which standard two layer networks
+can not approximate accurately without exponential size.
 
-Finally, we undertake preliminary experiments to investigate empirically the feasibility of learning
-tensor decompositions in practice.
+The downside of these tensor products is the storage requirements. We investigate methods for
+decomposing tensors into products of smaller objects. Finally we conduct experiments to show that
+learning the coefficients of a decomposed tensor can be done in situ with gradient descent. We attempt
+to investigate the tradeoff between the complexity of the decomposition and the expressivity of the
+product and find that it scales as expected.
 
 \section{Definitions}
 Formally, we refer to a multi-dimensional array which requires \(n\) indices to address a single
@@ -86,10 +89,8 @@ this way reduced to a matrix. Kolda and Bader introduce the operator
 for this, where \(i\) represents the index to vary \autocite{Kolda2009}. For the bilinear forms
 we are concerned with, this leads to the following notation:
 \begin{align}
-	\vec{z} &= \tensor{W} \;\bar{\times}_1\; \vec{x}\; \bar{\times}_2\; \vec{y} 
-	\label{eq:bilinearkolda} \\
-	&= \tensor{W} \; \bar{\times}_3\; \vec{y}\; \bar{\times}_1\; \vec{x}.
-	\label{eq:bilinearkolda2}
+	\vec{z} &= \tensor{W} \;\bar{\times}_1\; \vec{x}\; \bar{\times}_2\; \vec{y} .
+	\label{eq:bilinearkolda}
 \end{align}
 
 \begin{figure}
@@ -128,11 +129,10 @@ we are concerned with, this leads to the following notation:
 When \(\tensor{W}\) is a three-way tensor, we prefer a more compact notation
 \begin{equation}\label{eq:bilintensor}
 	\vec{z} = \tran{\vec{x}}\tensor{W}\vec{y}.
-\end{equation} This loses none of the precision of the more verbose notation, provided we make clear
+\end{equation} This loses none of the precision of the more verbose notation provided we make clear
 that we intend \(\vec{x}\) to operate along the first dimension of the tensor and \(\vec{y}\) the
-third. That is to say, \((\tran{\vec{x}}\tensor{W})\vec{y}\) exactly corresponds with 
-equation~\eqref{eq:bilinearkolda} while \(\tran{\vec{x}}(\tensor{W}\vec{y})\) corresponds to
-equation~\eqref{eq:bilinearkolda2}. With either notation, for a tensor 
+third such that \((\tran{\vec{x}}\tensor{W})\vec{y}\) exactly corresponds with 
+equation~\eqref{eq:bilinearkolda}. With either notation, for a tensor 
 \(\tensor{W} \in \mathbb{R}^{n_1 \times n_2 \times n_3}\), we must have that 
 \(\vec{x}\in \mathbb{R}^{n_1}\), \(\vec{y} \in \mathbb{R}^{n_3}\) and the result 
 \(\vec{z}\in\mathbb{R}^{n_2}\).
@@ -217,7 +217,7 @@ interpretations provide insight both into what is actually being calculated and 
 be applicable to a neural network setting. In all of the below we use the above definitions of
 \(\vec{x}, \vec{y}, \vec{z}\) and \(\tensor{W}\).
 
-\subsection{Interpretations}
+\subsection{Interpretations}\label{sec:tensorinterps}
 \subsubsection{Stacked bilinear forms}
 If we consider the expression for a single element of \(\vec{z}\), we get
 \begin{equation} \label{eq:singlezsum}
@@ -274,7 +274,28 @@ interpret each coordinate of the result of the bilinear tensor product as being 
 independent similarity measure based on different interpretations of the underlying
 feature space. In this sense, where a matrix multiplication looks for patterns in a single input
 space, a bilinear product looks for \emph{joint} patterns in the combined input spaces of
-\(\vec{x}\) and \(\vec{y}\).
+\(\vec{x}\) and \(\vec{y}\). This becomes clear if we write out each element of the result
+vector
+\begin{equation} \label{eq:features}
+	\vec{z} = \begin{bmatrix}
+		\tran{\vec{x}}\mat{W}_{\midbullet 1 \midbullet}\vec{y} \\
+		\tran{\vec{x}}\mat{W}_{\midbullet 2 \midbullet}\vec{y} \\
+		\vdots \\
+		\tran{\vec{x}}\mat{W}_{\midbullet n_2 \midbullet}\vec{y}
+	\end{bmatrix}
+	= \begin{bmatrix}
+		\langle\vec{x}, \mat{W}_{\midbullet 1 \midbullet} \vec{y}\rangle \\
+		\langle\vec{x}, \mat{W}_{\midbullet 2 \midbullet} \vec{y}\rangle \\
+		\vdots \\
+		\langle\vec{x}, \mat{W}_{\midbullet n_2 \midbullet} \vec{y}\rangle
+	\end{bmatrix}
+	 = \begin{bmatrix}
+	 	\cos \theta_1 \cdot ||\vec{x}||_2 \cdot ||\mat{W}_{\midbullet 1 \midbullet}\vec{y}||_2 \\
+	 	\cos \theta_2 \cdot ||\vec{x}||_2 \cdot ||\mat{W}_{\midbullet 2 \midbullet}\vec{y}||_2 \\
+		\vdots \\
+	 	\cos \theta_{n_2} \cdot ||\vec{x}||_2 \cdot ||\mat{W}_{\midbullet n_2 \midbullet}\vec{y}||_2 \\
+	 \end{bmatrix}.
+\end{equation}
 
 
 \subsubsection{Choosing a matrix}
@@ -547,7 +568,7 @@ input
 deal specifically with cases where the norm is the Euclidean norm (as is the case for the
 common squared-exponential kernel). They also
 require some additional constraints on the boundedness and support of the function, see
-\autocite{Eldan2016}, theorem 1, for the precise construction.} --
+\autocite{Eldan2016} theorem 1, for the precise construction.} --
 there exist networks with two hidden layers and a number of nodes polynomial in the input dimension
 which can perfectly approximate the function. They then show that a shallower network with a single
 hidden layer can only perfectly approximate the function with a number of nodes exponential in the
@@ -556,14 +577,13 @@ is remarkable as it proves an impossibility: there is a realistic class of funct
 impossible to approximate accurately with a two layer network with polynomial size. However,
 this restriction can be subverted if we allow tensor semantics in the first layer of the network.
 
-Eldan and Shamir's proof constructs a three-layer network in the following manner:
-for an input \(\vec{x}\), the first two layers learn to approximate the map 
-\(\vec{x}\mapsto ||x||^2_2 = \sum_i x_i^2\) while the final layer learns a univariate function on the
-squared norm \autocite{Eldan2016}.
-
-To show that allowing a tensor product allows a two layer network to achieve the same goal, we
-simply need to show how a single tensor layer can compute the squared norm. We will use the
-quadratic layer mentioned earlier. Recalling lemma~\ref{lem:outerprod}
+To show this, we first require the following lemma.
+\begin{lem}[Squared norm]\label{lem:sqnorm}
+	A tensor layer \(\tran{\vec{x}}\tensor{W}\vec{x}\) is capable of exactly computing the squared
+	Euclidean norm \(||\vec{x}||^2_2 = \sum_i x_i^2\).
+\end{lem}
+\begin{proof}
+Recalling lemma~\ref{lem:outerprod}
 \begin{equation} \label{eq:outerquad}
 	\tran{\vec{x}}\tensor{W}\vec{x} = \matr_2(\tensor{W}) \vect(\vec{x}\tran{\vec{x}}).
 \end{equation} Note that the diagonal elements of \(\vec{x}\tran{\vec{x}}\) are the components
@@ -574,13 +594,33 @@ require a single output. The matricisation is then a \(1 \times d^2\) row vector
 to set its elements zero apart from those with indices of the form \(1 + id\) for 
 \(i \in \{1, \ldots, d\}\). The matrix product will then simply pick out the diagonal elements and
 sum them, computing the squared norm as required.
+\end{proof}
 
-Eldan and Shamir prove a bound on the number of nodes -- this tensor layer requires only one
-node to compute the norm and so only tightens the bound. The number of parameters,
-\(\Theta(d^2)\) is polynomial. Classic feed-forward nodes would have a number of parameters
-linear in \(d\), but the bound proved in \autocite{Eldan2016} requires \(\Theta(d^{19/4})\) such
-nodes per layer, so inserting a tensor does not increase the number of parameters or nodes.
- 
+\begin{thm}[Exponential expressivity of tensor layers]
+There exists a class of functions which can be approximated arbitrarily well by a two layer network
+including a single tensor layer with a number of nodes polynomial in the size of the input which
+require an exponential number of nodes to be approximated by a standard feed-forward layer.
+\end{thm}
+\begin{proof}
+We make use of Eldan and Shamir's proof \autocite{Eldan2016}. This is highly technical so we only
+provide a constructive outline here, which shows where we need to fit in. The proof in
+\autocite{Eldan2016} shows that for a given class of radial basis-like functions a two-layer
+feed-forward network requires exponential width to be able to approximate below a certain error.
+
+They then construct a three-layer network in the following manner:
+for an input \(\vec{x}\), the first two layers learn to approximate the map 
+\(\vec{x}\mapsto ||x||^2_2 = \sum_i x_i^2\) while the final layer learns a univariate function on the
+squared norm, it is then proved that this required that each layer have polynomial width.
+
+Using lemma~\ref{lem:sqnorm}, we can compute the squared norm exactly
+with a single layer. We can therefore construct a network in
+the same fashion as Eldan and Shamir, replacing the first two layers with a single tensor layer. 
+
+This plugs directly into the proof of lemma 10 in \autocite[18--19]{Eldan2016}, simply noting that
+we must duplicate the tensor layer a polynomial number of times. At most we will need the same number of
+nodes in the final hidden layer of Eldan and Shamir's three layer network.
+\end{proof}
+
 This is a remarkable result, as it shows the increase in expressive power gained by allowing
 tensor representations. We have shown a single tensor layer can do the work of two feed-forward
 layers. This provides a strong motivation to explore architectures incorporating these tensor
@@ -720,14 +760,6 @@ figure~\ref{fig:cpbilintnd}, which can be compared to figure~\ref{fig:vanillabil
 	\caption{One way of representing a bilinear product in the CP-decomposition.}
 	\label{fig:cpbilintnd}
 \end{figure}
-
-\subsubsection{Storage Requirements}
-The number of stored coefficients for a rank \(R\) CP-decomposed tensor of size 
-\(I \times J \times K\) will be \(RI + RJ + RK\). Explicitly storing the tensor would require
-\(IJK\) numbers to be stored. To illustrate the significance of this, consider the case when
-the tensor being decomposed has all dimensions and rank of equal size. Denoting the size as
-\(I\), then the explicit tensor will have an \(I^3\) storage requirement while the decomposed
-tensor needs only \(3RI\), a remarkable reduction.
 
 \subsubsection{Discussion}
 The CP decomposition does a remarkable job of preserving the expressivity. To illustrate this
@@ -964,13 +996,22 @@ by construction of \(\tensor{B}\).
 %the additional matrix with the central tensor. For that reason, we prefer the simpler tensor-train.
 
 \subsubsection{Space Requirements}
-The CP-decomposition is appealing because it has a single hyper-parameter \(r\). Further, the
-storage of a CP-decomposed tensor is linear in \(r\). By comparison the TT-decomposition has
-two parameters and the total storage requirement grows linearly in their product. This makes
-choosing the parameter potentially easier with the CP-decomposition. If we take the easy option
-and set both ranks of the TT-decomposition to the same value, then the number of elements is
-proportional to the square of that value. As the rank has to be an integer, this potentially gives
-us fewer feasible options.
+The number of stored coefficients for a rank \(R\) CP-decomposed tensor of size 
+\(I \times J \times K\) will be \(RI + RJ + RK\). Explicitly storing the tensor would require
+\(IJK\) numbers to be stored. To illustrate the significance of this, consider the case when
+the tensor being decomposed has all dimensions and rank of equal size. Denoting the size as
+\(I\), then the explicit tensor will have an \(I^3\) storage requirement while the decomposed
+tensor needs only \(3RI\), a remarkable reduction.
+
+For a TT decomposition with ranks \((R_1, R_2)\) and dimensions \(I \times J \times K\) we need
+\(R_1I + R_1JR_2 + R_2K\) storage. If both ranks are equal, this becomes \(RI + R^2J + RK\), which
+is quadratic in the rank. As the ranks have to be integers, this gives us less ability to fine-tune the
+number of parameters in the decomposition as changing the ranks by small amounts may have large
+implications on the size of the decomposition.
+
+The CP decomposition is clearly the most appealing in this regard. Not only does it only require a
+single hyper-parameter to control the size, the fact that it grows linearly in that hyper-parameter
+makes it much more amenable to adjustment.
 
 \section{Learning decompositions by gradient descent}
 We now present some experimental results, with two aims in mind. Firstly, it is instructive to compare
@@ -1252,11 +1293,19 @@ as \(1\) and false as \(0\). As there are only four data points, all were evalua
 All models were trained using standard gradient descent with a learning rate of \(0.5\).
 
 Three models were evaluated, a perceptron, a multi-layer perceptron (MLP) and a single layer tensor. All
-models used a sigmoid nonlinearity on the output, while the MLP had 4 hidden units also with sigmoids. Models
-were trained to minimise the cross-entropy, averaged across the data points. Models were trained for \(1000\)
-epochs, this was enough to see the differences in performance.
+models used a sigmoid nonlinearity on the output, the MLP had 4 hidden units also with sigmoids and the 
+tensor layer used a rank \(1\) CP decomposition. Models
+were trained to minimise the cross-entropy, averaged across the data points with training continuing
+for \(1000\) epochs. Although not all MLPs had converged by this time, it was sufficient to see the difference
+between the architectures. 
 
 \subsubsection{Results}
+The baseline cross entropy is 0.6931, corresponding to outputting
+0.5 for all inputs (or guessing uniformly at random). As expected, the perceptron converges rapidly to this
+point. Both the MLP and the tensor are able to solve the task, although it is interesting to note that the
+tensor does so far more rapidly and reliably than the MLP. This is not surprising in light of
+theorem~\ref{thm:xor} as this is precisely the kind of relationship we would expect the tensor product to
+represent naturally.
 
 \begin{figure}
 \begin{floatrow}
@@ -1282,9 +1331,7 @@ epochs, this was enough to see the differences in performance.
 \includegraphics[width=0.45\textwidth]{tensors/xor}
 }{%
  \caption[XOR results]{Exclusive-or results. Bold line is the mean of 50 runs, shading indicates the
-minimum and maximum across all runs. Baseline cross entropy is 0.6931, corresponding to outputting
-0.5 for all input (or guessing uniformly at random).}
-
+minimum and maximum across all runs.}
 }
 \end{floatrow}
 \end{figure}
