@@ -214,8 +214,10 @@ propagate it backward in time, leading to a negligible update to the weights.
  illustrative purposes that \(f(\cdot)\) is the identity function (so we have a linear network),
 then the loss vector is multiplied by \(\mat{W}\) taken to the \((j-i)\)-th power. If the largest
 eigenvalue of \(\mat{W}\) is large, then this will cause the gradient to eventually explode.
-If the largest eignevalue is small, then the gradient will vanish. This issue was first presented
-in 1994 \autocite{Bengio1994}, for a thorough treatment including necessary conditions 
+If the largest eigenvalue is small, then the gradient will vanish. This issue was first presented
+in 1994 \autocite{Bengio1994} where it was shown to be unavoidable if the network needs to both store
+information and be robust to noise. However, this has not precluded further research into alleviating
+the main symptoms, for a thorough treatment including necessary conditions 
 for vanishing and the complementary exploding problem, see \autocite{Pascanu2012}.
 
 In the non-linear case, this remains a serious issue. While exploding gradients are often

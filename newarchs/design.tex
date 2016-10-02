@@ -103,7 +103,7 @@ adds during training it will struggle to learn to subtract. An unbounded non-lin
 exacerbate the gradient issues, which makes this sort of a network challenging to design.
 
 
-\subsection{Gates}
+\subsection{Gates}\label{sec:gate}
 LSTMs and GRUs manage their additive connections by applying multiplicative gates. We will therefore
 investigate the solutions they present, with a view to choosing the best. We refer to the LSTM's gate
 as a \emph{forget} gate, which is consistent with the literature. This type performs best
@@ -137,9 +137,8 @@ The convex gate makes the following modification:
 \begin{equation}
 	h_t = p_th_{t-1} + (1-p_t)z_t.
 	\label{eq:cvexgate}
-\end{equation} This has a number of consequences but in short it allows the one gate signal
-to control the acceptance or rejection of new information. This is potentially very powerful as
-it takes much of the burden off the candidate production mechanism to gate itself.
+\end{equation} This allows the one gate signal
+to control the acceptance or rejection of new information.
 
 In order to analyse the possible behaviours of these gates, we observe that each state \(h_t\)
 can be expanded as a weighted sum over all \(z_i\) for \(i < t\). In this sense, we can think of
@@ -192,7 +191,9 @@ Both of these require a significant degree of co-operation between the gate and 
 produces candidate activations. Further, the production of candidate activations has to be quite
 flexible and most likely depend on the previous state. The LSTM achieves this with further gating
 of inputs and outputs, enabling the candidate to depend heavily on previous states. We hypothesise that
-having to learn this degree of co-operation hinders learning by gradient descent.\hl{why}
+having to learn this degree of co-operation hinders learning by gradient descent as it requires a
+carefully tuned balance to be maintained through the training process or gradients will vanish or
+explode.
 
 
 \begin{figure}[t]
@@ -215,7 +216,7 @@ is the product of all gate values from \(t\) down to 1, the range of possible sh
 \label{fig:lstmgates}
 \end{figure}
 
-The shape of this window affects access to past information, and can be an issue during training. 
+The shape of this window affects access to past information which can be an issue during training. 
 Intuitively it would be good for the
 information stored in the states to persist so that its presence will affect the gradients being
 back-propagated which will affirm or suppress its presence. This is going to be an issue when
@@ -393,7 +394,7 @@ While the gradient of the state with respect to a prior candidate is
 	\frac{\partial h_t}{\partial z_i} &=
 		\left(\prod_{k=i+1}^t \frac{\partial h_k}{\partial h_{k-1}}\right) 
 			\frac{\partial h_i}{\partial z_i} \\
-	&= \left( \prod_{k=i+1}^t p_k \right) (1 - p_i).
+	&= \left( \prod_{k=i+1}^t p_k \right) (1 - p_i). \label{eq:cvexstategrad}
 \end{align} The pattern here is fundamentally the same as the forget gate in that the gradient
 is simply the coefficient assigned to \(z_i\) in the weighted sum that produced \(h_t\). Hence
 all discussion of the differences in the gates' forward behaviour apply equally during the
@@ -402,30 +403,120 @@ backward pass.
 Equation~\eqref{eq:cvexgrad} is interesting -- the gradient of the state with respect to the gate value
 depends not just on the preceding state but on the difference between the state and the proposed
 update. This suggests that during training what drives the updates is the possible changes that could be
-made to the state, rather than just the state values itself.
+made to the state, rather than just the state values itself. Meanwhile, equation~\eqref{eq:cvexstategrad}
+shows that the ``conservation of attention'' in proposition~\ref{prop:convexsum} also applies on the
+backward pass. This suggests that as long as the scale of the candidate activations are under control
+there will be no problems with exploding gradients.
+
 
 \subsubsection{Conclusions}
 The convex gate by itself seems more capable than the forget gate as it is able to represent more
 useful distributions over past candidate states. However, the combination of forget gate and input
-gate employed in the LSTM are able to together represent the same behaviours if not more. Despite this
-the convex gate is more appealing, as it is able to do a lot of work by itself, which should aid
-training.
-This ability presents an interesting architectural avenue -- if the gate is sufficiently
-expressive, then the candidate activations may not have to depend on the previous state. The
-only downside is that it is not obviously any easier to train, although it should not be more
-difficult especially if we remove the need for co-adaptation between the two mechanisms.
+gate employed in the LSTM are able to together represent the same behaviours, if not more. 
+Despite this, we find the convex gate more appealing as it is provides the opportunity to design clean
+and modular architectures in which each component has a precise role which does not overlap with others.
 
-This presents a class of architectures with an appealing separation of roles. One part
-of the model takes the new input and simply computes a feed-forward embedding of the input into
-the state space of the model. The other part can use all relevant information (the hidden state
-and the new input) to decide whether to accept or reject the candidate update. This proposes
-a fundamental shift from existing gated architectures. Both LSTMs and GRUs have a significant
-portion of the parameters devoted to computing new state updates, while the gating of the update
-is attended to by a single vanilla RNN unit. However, with the convex gate present in the GRU
-it seems as though these roles could be reversed. Focusing the computational effort in this way
-should help ameliorate concerns about having to learn significant co-operation
-between sections of the network.
+
 
 \section{Gated Tensor RNNs}
-In this section we formalise some promising RNNs.
+To design a gated RNN, there are three choices to make: how to gate the recurrence, how to compute
+gate values and how to compute candidate updates. We are now in a position to make these choices on the
+basis of chapter~\ref{C:tens} which discussed how to use tensors to model binary functions and
+the above section~\ref{sec:gate} informs our choice of gate.
 
+
+
+\subsection{Choices}
+\subsubsection{Form of the gate}
+We now consider how to compute the \(\vec{p}_i\) values.
+The role of the gate is to manage the flow of new information into the states. The decisions it has to
+make are whether to forget what is currently stored and completely overwrite it or reject a candidate
+update if what is present in the state is somehow more useful. Of the two competing choices, we prefer
+the convex gate. This is because it is capable of expressing a rich range of distributions over past
+states in a single operation and without exploding gradients.
+This gives a recurrence of the form
+\begin{equation}\label{eq:propgate}
+	\vec{h}_t = \vec{p}_t \odot \vec{h}_{t-1} + (\vec{1} - \vec{p}_t) \odot \vec{z}_t.
+\end{equation}
+
+\subsubsection{Gate calculation}
+The gate calculation is inherently binary. In order to decide whether incoming information should
+overwrite the current state values, the gate will need to see the current values. This nature suggests
+the use of a tensor unit as discussed in chapter~\ref{C:tens}. If we want to get the full utility of
+the convex gate, it seems logical to imbue it with full expressive power -- the bilinear tensor is a
+perfect fit.
+
+It is also necessary to choose a non-linearity. Much of the above analysis assumes the gate signals are
+in the range \([0, 1]\) although this was not used in the proof of proposition~\ref{prop:convexsum}. The
+typical approach is to ensure this smoothly with a sigmoid. Although sigmoids have undesirable
+properties when used in feed-forward networks \autocite{Glorot2010} they remain the standard choice
+when this kind of gating is desired \autocite{VandenOord2016, Oord2016} and we find no reason to
+deviate from this.
+
+The desired gate value is then calculated as:
+\begin{equation}\label{eq:propgatevalue}
+	\vec{p}_t = \sigma\left(\tran{\tilde{\vec{x}}}_t\widetilde{\tensor{W}}\tilde{\vec{h}}_{t-1} \right).
+\end{equation}
+
+Following the results in chapter~\ref{C:tens} we intend to represent the tensor in a CP decomposition.
+It remains a choice to decide how to deal with the biases -- in the following experiments we tend to
+include results for both choices for comparison. In particular, keeping the biases implicit potentially
+provides the ability to regularise the model by restricting the rank, although it needs to be seen
+empirically whether this affects adversely the representative power of the model.
+
+Using a tensor in this fashion provides an interesting possibility: the ability to write to the memory
+associatively. One interpretation of the tensor product is that it computes similarity measures between
+its inputs. Under this interpretation, the gate is constantly computing weighted similarities between
+the input and the current state. It is possible then for the gate to react if a certain pattern in the
+input matches a pattern stored in the state and admit or deny a corresponding update. This example
+shows the power of incorporating multiplicative connections -- this mode of behaviour is very difficult
+to realise when the inputs share only an additive connection.
+
+\subsubsection{Candidate update}
+All that remains is to determine how to derive a candidate state update. In all of the architectures
+surveyed apart from the Strongly Typed variants \autocite{Balduzzi2016} it is assumed that this needs
+to be a binary function of the current input and the previous hidden state. Intuitively this needs to
+be the case with the LSTM style forget gate, but as we have decided against that it is worth questioning
+this assumption.
+
+Removing this step makes each role in the network clearly defined. As each input comes in, it is
+embedded into the state space. The gate decides whether it is important information and the state is
+updated additively. The candidate production mechanism only needs to behave in as a feature
+detector, transforming the input into a representation that captures its essential structure in a way
+amenable to additive composition.
+
+This scheme is appealing due to its simplicity and separation of
+roles, although two questions remain to be answered: how does this affect the expressive power of the
+network and how should we compute the necessary representation. The former is likely to be a best
+answered empirically, although we make a brief note here. One aspect of the GRU and LSTM that is
+certainly lost is what we term the ``carousel'' behaviour. A method for these networks to maintain
+information in their hidden states for long time periods is for the candidate production mechanism to
+learn an identity mapping from hidden states to hidden states. This behaviour is impossible to realise
+unless the candidate state depends on the previous hidden state. Note that this is also the only way
+that the Vanilla RNN can remember information for long time periods. Given the failures of the
+Vanilla RNN, we hypothesise that removing this mode of behaviour should be no great loss. Further,
+we suggest it may help optimisation if there is only one clear way in which to store information. This
+leads us to conclude that we want to remove the hidden state from the candidate calculation.
+
+What remains is to determine how to compute the candidate from the input. We wish to model a unary
+mapping from the input to the candidate, so a logical way to proceed is with a standard feed-forward
+layer:
+\begin{equation}\label{eq:propcandidate}
+	\vec{z}_t = f(\mat{W}_{in}\vec{x}_t + \vec{b}_{in}).
+\end{equation} We experimented with a number of options for the non-linearity \(f\) and found the best
+performance was consistently achieved with either a linear rectifier \(\rho(x) = \max(0, x)\) or no
+non-linearity at all. This echoes trends in feed-forward networks away from saturating non-linearities
+towards unbounded, piecewise linear activation functions \autocite{Goodfellow2013, He}. It is
+interesting that for many tasks a completely linear candidate performed optimally -- the only hypothesis
+is that the sigmoid applied to the gate is enough non-linearity to preserve the representative power of
+the network as a whole and that a linear layer will have very strong gradients and potentially
+preferable training dynamics \autocite{Saxe2013}.
+
+While a single feed-forward layer was sufficient in our experiments, there is scope to expand this,
+potentially in a task-dependent manner. For example this could be a deeper feed-forward architecture,
+a convolutional neural network if the inputs have appropriate structure or even an identity map if the
+input to the network is already high-level features.
+
+\subsection{NAME}
+Bringing together equations \eqref{eq:propgate}, \eqref{eq:propgatevalue} and \eqref{eq:propcandidate}
+gives us the proposed 
