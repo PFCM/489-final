@@ -3,7 +3,8 @@
 \chapter{Proposed Architectures}\label{C:arch}
 In this chapter we use the intuitions gathered from related works to propose novel classes of
 architectures employing tensor decompositions to implement multiplicative connections. There are
-two key principles 
+two key principles: simplicity and modularity. We want to design networks that have no extraneous
+components, such that every element of the network has a clearly defined role.
 
 \section{Incorporating tensors for expressivity}
 We have established that incorporating tensors into networks is a promising line of inquiry, all that
@@ -40,7 +41,7 @@ the decomposition or treat the bias matrices separately. The latter provides les
 parameters, as there are now two matrices unaffected by the rank, but it might be helpful in that we
 could use a very low rank decomposition and still maintain a baseline behaviour.
 
-\subsection{Generalised Multiplicative RNN}
+\subsection{Generalised Multiplicative RNN}\label{sec:gmrnn}
 The simplest architecture way to incorporate a decomposed tensor is to use it to generalise the
 Multiplicative RNN and Multiplicative Integration RNN \autocite{Martens2011a, Wu2016}.
 To do this, we simply replace the various linear operations with a bilinear form with appropriate
@@ -517,6 +518,27 @@ potentially in a task-dependent manner. For example this could be a deeper feed-
 a convolutional neural network if the inputs have appropriate structure or even an identity map if the
 input to the network is already high-level features.
 
-\subsection{NAME}
+\subsection{Tensor Gate Unit}
 Bringing together equations \eqref{eq:propgate}, \eqref{eq:propgatevalue} and \eqref{eq:propcandidate}
-gives us the proposed 
+gives us the proposed Tensor Gate Unit (TGU) which computes its hidden states as follows:
+\begin{align}\label{eq:tgu}
+	\vec{h}_t &= \vec{p}_t \odot \vec{h}_{t-1} + (\vec{1}-\vec{p}_t)\vec{z}_t \\
+	\vec{p}_t &= \sigma\left(\tran{\tilde{\vec{x}}}_t\widetilde{\tensor{W}}\tilde{\vec{h}}_{t-1} \right)\\
+	\vec{z}_t &= f(\mat{W}_{in}\vec{x}_t + \vec{b}_{in})
+\end{align}
+
+We will represent the tensor with a CP decomposition. We still have to decide whether to incorporate the
+biases in the decomposition or keep them separate. A straightforward inclination is to keep them separate
+for the reasons outlined in section~\ref{sec:gmrnn}, leading to the following gate equation:
+\begin{align}\label{eq:tggateseparate}
+	\vec{d}_t &= \tran{\mat{B}}\left(\mat{A}\vec{x}_t\odot\mat{C}\vec{h}_{t-1}\right)\\
+	\vec{p}_t &= \sigma\left(
+		\vec{d}_t
+		+ \mat{U}\vec{h}_{t-1} + \mat{V}\vec{x}_t + \vec{b}\right).
+\end{align}
+We also consider the alternative where the bias matrices are folded into the decomposition:
+\begin{align}\label{eq:tggatecombined}
+	\vec{d}_t &= \tran{\mat{B}}\left((\mat{A}\vec{x}_t 
+	+ \vec{b}_x)\odot(\mat{C}\vec{h}_{t-1} + \vec{b}_h)\right)\\
+	\vec{p}_t &= \sigma(\vec{d}_t)
+\end{align}

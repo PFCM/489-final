@@ -1,10 +1,38 @@
 % !TEX root = ../proj_report_outline.tex
 
 \chapter{Evaluation of architectures}\label{C:exps}
+In this chapter we present experimental results comparing the performance of the proposed architectures.
+\hl{something something something}.
+
 \section{Synthetic Tasks}
-Pathological, exercise specific features of the architecture.
+We first evaluate the performance of the architectures on some synthetic tasks. These tasks are designed
+to be difficult and to exercise various faculties of the model.
+
 \subsection{Addition}
+\subsubsection{Task}
+This task is designed to test the networks' ability to store information for long time periods. It first
+featured in \autocite{Hochreiter1997}, although we use the slightly different formulation found more 
+recently in \autocite{Le2015}. The problem is a common benchmark for RNNs and has featured in a number of
+recent works (\autocite{Arjovsky2015, Henaff2016, Barone2016, Neyshabur2016} for example).
+
+The inputs for this task are sequences of length \(T\). There are two inputs, one sampled from a uniform
+distribution over the range \([0,1]\) while the other is zero except for two locations where it is one.
+The location of the first one is always chosen to be earlier than \(T/2\) while the second is after.
+The goal is to output at the last time step the sum of the two random values that were presented when the
+second input was one. Pseudocode for an algorithm to generate sequences is presented in the appendix,
+section~\ref{sec:additionpseudo}.
+
+\subsubsection{Experiment Setup}
+
+\subsubsection{Results}
+
 \subsection{Variable Binding}
+\subsubsection{Task}
+
+\subsubsection{Experiment Setup}
+
+\subsubsection{Results}
+
 \subsection{MNIST}
 is really dumb
 

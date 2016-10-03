@@ -210,15 +210,14 @@ of these kinds of products.
 	\label{fig:tnprods}
 \end{figure}
 
-\section{Bilinear Products}
+\section{Interpreting Bilinear Products}\label{sec:tensorinterps}
 There are several ways to describe the operation performed by the bilinear products we are
 concerned with. These correspond to different interpretations of the results. The following
 interpretations provide insight both into what is actually being calculated and how the product might
 be applicable to a neural network setting. In all of the below we use the above definitions of
 \(\vec{x}, \vec{y}, \vec{z}\) and \(\tensor{W}\).
 
-\subsection{Interpretations}\label{sec:tensorinterps}
-\subsubsection{Stacked bilinear forms}
+\subsection{Stacked bilinear forms}
 If we consider the expression for a single element of \(\vec{z}\), we get
 \begin{equation} \label{eq:singlezsum}
 	z_j = \sum_i^{n_1} \sum_k^{n_3} W_{ijk} x_i y_k
@@ -298,7 +297,7 @@ vector
 \end{equation}
 
 
-\subsubsection{Choosing a matrix}
+\subsection{Choosing a matrix}
 Following on from the above discussion we claim that for each coordinate of the output we are
 computing a \emph{similarity vector} which we compare to the remaining input to generate a
 scalar value. If we consider all coordinates at once, we see that this amounts to having
@@ -325,7 +324,7 @@ Although this provides a powerful insight into the bilinear product, it is worth
 the product is entirely symmetrical. We can not think purely about it as \(\vec{x}\) choosing a matrix
 for \(\vec{y}\) as the converse is equally true.
 
-\subsubsection{Tensor as an independent basis}
+\subsection{Tensor as an independent basis}
 Extending the above to try and capture the symmetry of the operation, we introduce
 the notion that the coefficients of the tensor represent a basis in which to compare the
 two inputs, independent of both of them. This idea is mentioned in
@@ -346,7 +345,7 @@ to vectors of real coefficients, we simply replace the idea of a
 of weighted sums; first over slices and then over rows or columns. The final product is then a
 distinct representation of both vectors in terms of the independent basis expressed by the tensor.
 
-\subsubsection{Operation on the outer product}
+\subsection{Operation on the outer product}
 Perhaps the most powerful interpretation of the product is achieved by observing that it is
 a linear operation on pairwise products of inputs.
 This interpretation is essential for understanding the expressive
