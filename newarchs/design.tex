@@ -66,7 +66,7 @@ the GRU both use such a method to produce new states, but they differ slightly. 
 the implications of both schemes and decide that the scheme employed in the GRU has appealing 
 properties which allow us to design simple yet flexible architectures with well defined components.
 
-\subsection{Naive Addition}
+\subsection{Naive Addition}\label{sec:additive}
 The simplest possible approach is to have the network compute a candidate vector of hidden states
 \(\vec{z}_t\) and compute new hidden states as
 \begin{equation}\label{eq:additiveupdate}

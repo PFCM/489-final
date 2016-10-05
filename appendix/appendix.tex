@@ -35,6 +35,7 @@ produces a single item, it could also be done in batches with slight adjustments
 \begin{algorithm}
 	\KwIn{Integer \(T\)}
 	\KwOut{Problem instance \((\vec{x}_1, \vec{x}_2, \ldots, \vec{x}_T), y\)}
+	\BlankLine
 	Sample integer \(i \sim U[1, (T/2)-1]\)\;
 	Sample integer \(j \sim U[T/2, T]\)\;
 	\(y \gets 0\)\;
@@ -50,4 +51,30 @@ produces a single item, it could also be done in batches with slight adjustments
 	\KwRet{\((\vec{x}_1, \vec{x}_2, \ldots, \vec{x}_T), y\)}
 	\caption{Generating data for addition task}
 	\label{alg:additiondata}
+\end{algorithm}
+
+\section{Variable binding}\label{sec:vbindpseudo}
+Algorithm~\ref{alg:vbinddata} shows how to generate a single data item for this task. This algorithm
+is indicative only, there are ways to be more efficient especially if it has to be implemented as a
+computation graph, for example in Tensorflow.
+
+\begin{algorithm}
+	\KwIn{Integers \(T, D, N\)}
+	\KwOut{Problem instance \((\vec{x}_1,\ldots,\vec{x}_T), (\vec{y}_1,\ldots,\vec{y}_T)\)}
+	\BlankLine
+	intialise \((\vec{x}_1,\ldots,\vec{x}_T), (\vec{y}_1,\ldots,\vec{y}_T)\) to zeros\;
+	\For{\(i \in \{1, \ldots, N\}\)} {
+		Sample integer \(j \sim U[1, (T/2)-1]\) \tcc*{start position}
+		Sample integer \(k \sim U[j+1, T]\) \tcc*{end position}
+		\(\vec{z} \gets\) random \(D\) bit binary pattern\;
+		\(\vec{y}_{k+1} \gets \vec{z}\)\;
+		Set first \(D\) bits of \(\vec{x}_{i+1}\) to \(\vec{z}\)\;
+		\For(set label bits){\(l \in \{j,\ldots,k\}\)}{
+			\({x}_{l, D+i} \gets 1\)\;
+		}
+	}
+	\KwRet{\((\vec{x}_1,\ldots,\vec{x}_T), (\vec{y}_1,\ldots,\vec{y}_T)\)}
+	
+	\caption{Generating data for variable binding}
+	\label{alg:vbinddata}
 \end{algorithm}
