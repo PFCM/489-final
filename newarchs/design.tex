@@ -54,8 +54,8 @@ vanilla RNNs as well as several types of multiplicative RNNs:
 \begin{equation}\label{eq:gmrnnbias}
 	\vec{h}_t = \tau\left(\tran{\vec{x}_t}\tensor{W}\vec{h}_{t-1}
 		+ \mat{U}\vec{h}_{t-1} + \mat{V}\vec{x}_t + \vec{b}\right).
-\end{equation} We term this the Generalised Multiplicative RNN (GMRNN). Unfortunately this
-network is still going to exhibit the same vanishing gradients as the vanilla RNN as the state updates
+\end{equation} We term this the Generalised Multiplicative RNN (GMR). Unfortunately this
+network will still exhibit the same vanishing gradients as the vanilla RNN as the state updates
 still pass through a matrix (albeit one modulated by the new input).
 
 \section{Gates and Long Time Dependencies}
@@ -441,9 +441,10 @@ This gives a recurrence of the form
 \end{equation}
 
 \subsubsection{Gate calculation}
-The gate calculation is inherently binary. In order to decide whether incoming information should
-overwrite the current state values, the gate will need to see the current values. This nature suggests
-the use of a tensor unit as discussed in chapter~\ref{C:tens}. If we want to get the full utility of
+In order to decide whether incoming information should
+overwrite the current state values, the gate will need to see the current values and the new information.
+ The binary nature of this task suggests
+the use of a tensor unit as discussed in chapter~\ref{C:tens}. Secondly if we want the full utility of
 the convex gate, it seems logical to imbue it with full expressive power -- the bilinear tensor is a
 perfect fit.
 

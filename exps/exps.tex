@@ -29,25 +29,115 @@ We test a number of architectures on sequences with \(T\) of \(250, 500\) and \(
 concerned purely with the ability of the networks to solve the task, we generate a new batch of
 sequences at each step. All models were allowed \(8\) hidden units and trained on batches of \(8\)
 data items to minimise the squared error between the output of the network at the final time step and
-the target value. Updates were applied using ADAM \autocite{Kingma2014} with a base learning rate chosen
+the target value. The TGU was allowed a rank \(4\) tensor, giving it the smallest number of parameters
+of the gated architectures tested.
+Updates were applied using ADAM \autocite{Kingma2014} with a base learning rate chosen
 from \(\{0.1, 0.01, 0.001, 0.0001\}\) according to speed of convergence. For all runs, training continued
-for \(2000\) updates. While some authors have found they require significantly more updates for success
+for \(1800\) updates. While some authors have found they require significantly more updates for success
 with certain architectures (up to 10,000,000 in the case of \autocite{Le2015}) we found most successful
-architectures so converge within 500 on most sequences.
+architectures converge within 500 on most sequences.
 
 While previously reported results for this task stop at \(T=750\), the most successful architectures still
 converge rapidly to a solution at this stage. In order to more fully test their limits we increase
 \(T\) to 1,000, 5,000 and 10,000. The same parameters were used but only the architectures tested that
-were able to solve the task at \(T=750\) were applied to the tasks.
+were able to solve the task at \(T=750\) were applied to these much more challenging tasks. In order
+to reliably find solutions at length 10,000 we had to increase the number of hidden units to \(32\), the
+rank of the tensor decomposition was increased proportionally to \(16\).
 
 The models tested were the LSTM, GRU, IRNN \autocite{Le2015} and our TGU. We use a standard LSTM without
 peephole connections. For the TGU we separate the bias matrices and use a layer of ReLUs for the candidate
-production.
+production. All models use a linear output layer to reduce the hidden states back to a scalar.
 
 \subsubsection{Results}
-The baseline result for this task is a squared error of \(0.1767\) which corresponds to predicting
+The baseline result for this task is a mean squared error of \(0.1767\) which corresponds to predicting
 \(1\) for every input. Many architectures are unable to perform significantly better than this.
+Figure~\ref{fig:addresults} shows that we were unable to find a solution with the IRNN or LSTM within
+the time allotted, while the GRU and TGU consistently did so very rapidly -- in less than 1,000
+iterations which several orders of magnitude faster than previously published results 
+\autocite{Le2015, Arjovsky2015, Henaff2016}.
 
+The figures also show that this task can be somewhat frustrating. Due to the online nature, the loss
+curves are very noisy, so it is almost impossible to determine whether a model is making progress.
+Further, in accordance with a number of others' results \autocite{Le2015, Arjovsky2015} that many
+architectures will sit on or around the baseline showing no signs of progress for thousands of
+training steps before suddenly and rapidly converging to a solution. This behaviour is not particularly
+evident in the presented results (although the GRU in figure~\ref{fig:add750} is close) as we ceased
+training fairly early compared to many authors as our successful architectures converged very rapidly.
+
+\begin{figure}
+\centering
+\begin{subfigure}[t]{0.75\textwidth}
+\includegraphics[width=\textwidth]{exps/addition/sl250}
+\caption{}
+\label{fig:add250}
+\end{subfigure}
+
+\begin{subfigure}[t]{0.75\textwidth}
+\includegraphics[width=\textwidth]{exps/addition/sl500}
+\caption{}
+\label{fig:add500}
+\end{subfigure}
+
+\begin{subfigure}[t]{0.75\textwidth}
+\includegraphics[width=\textwidth]{exps/addition/sl750}
+\caption{}
+\label{fig:add750}
+\end{subfigure}
+
+\caption{Results for addition task, standard sequence lengths.}
+\label{fig:addresults}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=0.75\textwidth]{exps/addition/long}
+\caption{Results for addition task, very long sequences.}
+\end{figure}
+
+On sequences up 750 steps, there is little to separate the GRU and the TGU. As they share a gating
+mechanism, it is probable that this is a key factor in their success. As discussed in
+chapter~\ref{C:arch} this convex gating mechanism is naturally capable of representing exactly the
+behaviour required to solve this task -- remembering precisely a small subset of inputs.
+
+We also
+found that the TGU performed much better on this task with a ReLU layer producing candidate updates,
+which is contrary to findings on several later tasks in which linear candidates were preferred.
+A possible reason for this is that it is very easy for the ReLU layer to output exactly \(0\).
+If the candidate activation mechanism is able to learn to simply output zeros when the appropriate
+input is zero, then if the gate is able to stay constant the task is essentially solved -- there should
+be at least one hidden unit that will contain a value proportional to the correct answer. Therefore,
+we would expect all gated units with an additive state update to perform excellently on this task, those
+with a rectified state update only more so.
+
+The performance of the LSTM is somewhat disappointing. Of all the models it has the most parameters and 
+should have the
+most expressive power. While others have shown 
+it is certainly capable of solving the task, the extra complexity 
+seems to make optimising the model much more difficult. This adds weight to the hypothesis posited in
+section~\ref{sec:gate} that the co-operation between components that the LSTM requires to succeed
+is tricky to learn by gradient descent and it is preferable to avoid it if possible.
+
+Although the convex gate is excellent at picking out individual time steps to remember, it still
+has the character of an exponential decay. We would then expect there might be a limit to just how
+far back the gradients will back-propagate and hence a limit on the longest time dependencies we
+can represent. Ultimately, we were unable to find a sequence long enough that the TGU was not capable
+of solving. Results for the TGU and GRU on extraordinarily long sequences are shown in 
+figure~\ref{fig:addlong}. The GRU begins to beat the baseline on most of the
+ sequences inside 2,000 updates,
+which is remarkable. What is more remarkable is that the TGU seems almost completely unaffected by the
+extreme length of the sequences, still achieving a reasonable solution inside 1,000 steps.
+
+For the sequences with length 10,000 the expected time dependency (the number of steps between the
+two inputs the network has to remember) is 5,000. The network then has to preserve this value in its
+memory for an average of 2,500 steps. If we consider taking the RNN and unrolling it across all 10,000
+timesteps, it is equivalent to a feed-forward network of extraordinary depth and shared weights at each
+layer.\footnote{As the error is only computed on the final output for this task, the analogy is very
+close -- the RNN is precisely a deep feed-forward network with shared weights and additional inputs
+at each layer.} In order to train it successfully we must be able to back-propagate gradients through
+7,500 steps on average. While the shared weights undoubtedly assist greatly as they will allow it to
+generalise useful behaviours found while training on the easier sequences, it is worth observing that this
+is still more than 5 times the depth of some of the deepest feed-forward networks reported
+\autocite{Huang2016}.
 
 
 \subsection{Variable Binding}
@@ -320,7 +410,7 @@ the permuted version is significantly more challenging.
 Although this has been widely used recently to benchmark architectural
 advances in RNNs (see, for example 
 \autocite{Zhang2016, Barone2016, Gao2016, Neyshabur2016, Cooijmans2016}
-just from 2016), we argue that it does not necessarily provide a useful test of
+solely from 2016), we argue that it does not necessarily provide a useful test of
 a model's capabilities. We show this by achieving excellent performance
 on the more challenging permuted task with a models which fail miserably
 in real world applications. 
@@ -336,7 +426,7 @@ at the final time step.
 
 \subsubsection{Proposed Architecture}
 We propose an architecture specifically for this task which is a variant on
-GMRNN proposed earlier, modified to allow for direct accumulation.
+GMR proposed earlier, modified to allow for direct accumulation.
 Further, we enforce this accumulative behaviour by applying a linear rectifier
 to the state update. The hidden states are computed by:
 \begin{equation}\label{eq:cpplus}
@@ -415,7 +505,7 @@ We use a grid search to find the best rank for the tensor models.
 \caption[Permuted MNIST results]{Performance (classification accuracy, \%)
  on the validation set of permuted MNIST
 by rank of tensor decomposition.}
-\label{fig:pmnistrank}
+\label{fig:pmnist}
 \end{figure}
 
 \begin{table}
@@ -463,13 +553,13 @@ enormous, but the largest still have up to 40,000 parameters so it is
 possible that the lower rank provides a regularising effect which helps
 the model learn a more general solution.
 
-The absurdity of the CP+ unit is clear from figure~\ref{fig:co+rank}.
-It trains in an incredibly volatile fashion. Interestingly for ranks
+The absurdity of the CP+ unit is clear from figure~\ref{fig:cp+rank} --
+it trains in an incredibly volatile fashion. Interestingly for ranks
 1 and 50 the best parameters found by grid search included a gradient
 threshold of 10, ten times the threshold needed for the other models.
 As rank 50 achieved the best performance, this appears to be an
 example of the benefits of operating at the ``edge of chaos'',
-right on the edge between vanishing and exploding gradients and states
+on the edge between vanishing and exploding gradients and states
 \autocite{Bertschinger2004}. Further, that the rank 1 model learns
 at all is remarkable. The tensor product is this unit is severely
 restricted, the vast majority of its learning power resides in a
@@ -521,17 +611,20 @@ competitive in a restricted setting on smaller data without fancy engineering
 tricks.}
 
 \subsection{Polyphonic Music}
-This task, introduced to the neural network community by 
+This task, introduced by 
 \autocite{Boulanger-Lewandowski2012} consists of modelling four datasets of
-polyphonic music. 
+polyphonic music from a score. This is potentially a challenging task -- not
+only do the melodies and chord progression exhibit long time dependencies, the
+networks must learn the rules of harmony to produce appropriately consonant
+arrangements. The likelihood of a given note at a given time step is affected
+by both simultaneous information (which other notes are one at the same time)
+and long term information (such as which key the piece is in). Modelling accurately
+both these dependencies is challenging but reflects well the difficulties inherent
+int much naturally generated data.
 
 
 
 \subsubsection{Task}
-
-
-
-\subsubsection{Experiments}
 The four datasets are:
 \begin{itemize}
 \item[Pianomidi] {
@@ -558,6 +651,12 @@ The four datasets are:
 	We use the split of the data given in \autocite{Allan2004}.}
 \end{itemize}
 
+The goal is to maximise the likelihood the model assigns to the data. This is done
+by minimising the negative log-likelihood. In general, Nottingham is the simplest of
+the datasets primarily due to the simple harmonic structure.
+
+
+\subsubsection{Experiments}
 The data is converted from MIDI files (which contain note on/off events) to
 an appropriate format by sampling the notes present at regular time intervals.
 This gives binary vectors in which each element indicates with a one or a zero whether
@@ -566,18 +665,25 @@ be downloaded from \url{http://www-etud.iro.umontreal.ca/~boulanni/icml2012}
 courtesy of Boulanger-Lewandowski et al. \autocite{Boulanger-Lewandowski2012}.}
 For each dataset, we fix the size of these vectors to the range of notes present in the
 dataset (after transposing to C major or C minor, equivalent to centering the data).
-\hl{point out that this is sensible, we aren't just being different for kicks}
+
 
 Previous work is somewhat inconsistent with the size of these vectors. Of those that
 report it, \autocite{Boulanger-Lewandowski2012} fix the size of the vectors for all
 datasets to the range of 88 notes available on a piano while \autocite{Chung2014}
-end up with much larger vectors although it is not clear why. In general this means
+end up with much larger vectors although it is not clear why. We fix the size of the
+inputs to the range of the notes present in the data. Although it could be argued it
+would be preferable and more flexible to use a more generous range, when the data is
+music written for specific instruments it only makes sense to train the model to attend
+to an appropriate range for those instruments. In general this means
 results can not be directly compared although it is worth noting they are similar,
 with nearly all of our RNNs surpassing \autocite{Chung2014} and achieving performance
-similar to the RNNs evaluated in \autocite{Boulanger-Lewandowski2012}. Given the differences
+similar to the RNNs evaluated in \autocite{Boulanger-Lewandowski2012}. 
+Further, the more unexpected elements of the results such as the performance of the
+Vanilla RNN on Nottingham are present in others' results.
+Given the differences
 in setup, we would expect our RNNs to fare slightly worse as using larger data vectors
 means many of the output units are redundant and never used. The network should learn this
-quite quickly which will bring the average negative log-likelihood down.
+quite quickly which will bring reduce the average loss.
 
 All networks used a single hidden layer. The number of hidden nodes and the rank of
 the tensor decomposition was chosen so that each network would have as close to
@@ -598,8 +704,8 @@ Vanilla & \multicolumn{4}{|c}{96  (19927)} \\
 LSTM & \multicolumn{4}{|c}{44 (20075)} \\
 GRU & \multicolumn{4}{|c}{52 (19763)} \\
 \hline
-GMRNN & 95/1 (19870) & 71/35 (19872) & 58/58 (19775) & 45/90 (20125) \\
-GMRNN-C & 349/1 (20005) & 106/52 (20142) & 76/76 (20119) & 53/106 (20248) \\
+GMR & 95/1 (19870) & 71/35 (19872) & 58/58 (19775) & 45/90 (20125) \\
+GMR-C & 349/1 (20005) & 106/52 (20142) & 76/76 (20119) & 53/106 (20248) \\
 TGU &  80/1 (20030) & 63/31 (20156) &  53/53 (20248) & 41/82 (19817) \\
 TGU-C &  176/1 (20000) & 88/44 (20075) & 66/66 (19855) & 48/96 (20071)\\
 \hline
@@ -630,8 +736,8 @@ achieved with the lower learning rate while the best maximum length seemed to be
 Vanilla   & \textbf{3.3278} & 3.8680 & \textbf{3.8871}      \\ % sl 100
 LSTM      & 3.5826          & 3.9683          & 4.0124		\\ % sl 100
 GRU		  & 3.5876		    & 3.9871		  & 4.0157		\\ % sl 100
-GMRNN	  & 3.3940		    & \textbf{3.8472} & 3.9055		\\ % rankone sl 100
-GMRNN-C   & 3.7902		    & 4.1242          & 4.1350		\\ % rankhalf sl 75
+GMR	  & 3.3940		    & \textbf{3.8472} & 3.9055		\\ % rankone sl 100
+GMR-C   & 3.7902		    & 4.1242          & 4.1350		\\ % rankhalf sl 75
 TGU		  & 3.9652		    & 4.2069          & 4.2140		\\ % rankone sl100
 TGU-C     & 4.0035		    & 4.2332	      & 4.2531		\\ % rankfull sl100
 lin-TGU   & 3.9387		    & 4.2095	      & 4.2255		\\ % rankone sl 75
@@ -643,8 +749,8 @@ lin-TGU-C & 3.9927		    & 4.2726          & 4.2907\\ % rankhalf sl 100
 Vanilla   & 8.0284	        & 8.5417	      & 8.6381   \\ % sl 75
 LSTM      & 8.2058	        & 8.5444	      & 8.6633   \\ % sl 75
 GRU		  & 8.1689	        & 8.5657	      & 8.6027   \\ % sl 75
-GMRNN	  & 8.0526	        & 8.5465	      & 8.6084   \\ % rankone sl 75
-GMRNN-C   & 8.0093	        & \textbf{8.4656} & 8.5369   \\ % rankhalf sl 100
+GMR	  & 8.0526	        & 8.5465	      & 8.6084   \\ % rankone sl 75
+GMR-C   & 8.0093	        & \textbf{8.4656} & 8.5369   \\ % rankhalf sl 100
 TGU		  & \textbf{7.9357} & 8.5140	      & 8.6060   \\ % rankhalf sl 75
 TGU-C     & 7.9731	        & 8.4926	      & \textbf{8.5307}   \\ % rankone sl 100
 lin-TGU   & 8.0645	        & 8.7126	      & 8.7282   \\ % rankhalf sl 75
@@ -656,8 +762,8 @@ lin-TGU-C & 8.2257	        & 8.6549	      & 8.7117   \\ % rankhalf sl 100
 Vanilla   & 7.3874	        & 8.5956	      & 7.8093   \\ % sl 75
 LSTM      & 7.3730	        & \textbf{8.5329} & 7.7542   \\ % sl 75
 GRU		  & 7.3039	        & 8.5671	      & 7.7652   \\ % sl 100
-GMRNN	  & 7.3598	        & 8.5890	      & 7.7676   \\ % rankone sl 100
-GMRNN-C   & 7.4244	        & 8.7350	      & 7.8615   \\ % rankhalf sl 100
+GMR	  & 7.3598	        & 8.5890	      & 7.7676   \\ % rankone sl 100
+GMR-C   & 7.4244	        & 8.7350	      & 7.8615   \\ % rankhalf sl 100
 TGU		  & \textbf{7.2132} & 8.5981	      & 7.7161   \\ % rankhalf sl 100
 TGU-C     & 7.2748	        & 8.5382	      & \textbf{7.7003}  \\ % rankhalf sl 75
 lin-TGU   & 7.2866	        & 8.5807	      & 7.7475   \\ % rankhalf sl 75
@@ -669,8 +775,8 @@ lin-TGU-C & 7.3216	        & 8.5716	      & 7.7209   \\ % rankhalf sl 75
 Vanilla   & 6.8954	        & 7.2597	      & 7.3619   \\ % sl 100
 LSTM      & 7.0777	        & 7.3652	      & 7.4159   \\ % sl 75
 GRU		  & 7.0001	        & 7.3256	      & 7.3824   \\ % sl 100
-GMRNN	  & \textbf{6.8864} & \textbf{7.2089} & \textbf{7.3089}   \\ % rankone sl 100
-GMRNN-C   & 6.9135	        & 7.3349	      & 7.4296   \\ % rankfull sl 100
+GMR	  & \textbf{6.8864} & \textbf{7.2089} & \textbf{7.3089}   \\ % rankone sl 100
+GMR-C   & 6.9135	        & 7.3349	      & 7.4296   \\ % rankfull sl 100
 TGU		  & 7.4524	        & 7.7076	      & 7.6879   \\ % rankone sl 100
 TGU-C     & 7.4551	        & 7.6842	      & 7.6719   \\ % rankhalf sl 100
 lin-TGU   & 7.5478	        & 7.7732	      & 7.7428   \\ % rankhalf sl 75
@@ -694,9 +800,65 @@ In general the tensor units performed better than their counterparts except on
 Nottingham, the simplest of the datasets. This dataset consists of folk songs which
 are often very formulaic in their harmony. Correspondingly, simple models seem to be able to
 perform very well. It also seems to be the case that there is something about the structure
-of the data which suits the Vanilla RNN -- the best GMRNN (which was the closest to the
+of the data which suits the Vanilla RNN -- the best GMR (which was the closest to the
 Vanilla RNN out of all architectures) had a rank \(1\) tensor decomposition. This means
 that it was functionally nearly identical to a Vanilla RNN.
 
+In fact, all of the best GMR models used a rank 1 tensor decomposition. This is interesting
+as it suggests the extra complication of the tensor product was only hindered learning on
+this data. An alternative conclusion that may be drawn is that it is beneficial to have more
+hidden units, even if that comes at the cost of decreased representational power. This effect
+was only notable in the GMR, so it is a distinct possibility given its general inability
+to modify its state in the complex manner captured by the gated architectures.
+
+\hl{still more to say about rank}
+
 \subsection{PTB}
+The next experiment aims to test whether reducing the number of parameters in the model by lowering
+the rank of the tensor decomposition can have a useful regularising effect.
+
+
+\subsubsection{Results}
+
+\begin{figure}
+\begin{subfigure}[t]{0.45\textwidth}
+	\includegraphics[width=\textwidth]{exps/ptb/tgu-rank}
+\end{subfigure}~
+\begin{subfigure}[t]{0.45\textwidth}
+	\includegraphics[width=\textwidth]{exps/ptb/tguc-rank}
+\end{subfigure}
+\begin{subfigure}[t]{0.45\textwidth}
+	\includegraphics[width=\textwidth]{exps/ptb/lintgu-rank}
+\end{subfigure}
+\begin{subfigure}[t]{0.45\textwidth}
+	\includegraphics[width=\textwidth]{exps/ptb/lintguc-rank}
+\end{subfigure}
+
+\caption[TGU PTB results by rank]{Test perplexity (lower is better)
+ of best early stopped models for
+each type of TGU for a range of ranks. Networks had 128 hidden units.}
+\label{fig:ptbtgurank}
+\end{figure}
+
+\begin{table}
+
+\begin{tabu} to \textwidth {r||l|l|l}
+ Architecture (rank) & \emph{Train} & \emph{Valid} & \emph{Test} \\
+\hline
+TGU   (64)    & 82.86 & 139.54 & 131.42 \\
+TGU-C  (64)   & 92.73 & 147.90 & 139.15 \\
+lin-TGU (64)  & 91.81 & 127.80 & \textbf{121.93} \\
+lin-TGU-C (128) & 99.74 & 133.77 & 127.56 \\
+\hline
+LSTM      & \textbf{78.74} & 144.75 & 134.79 \\
+GRU       & 79.89 & \textbf{133.55} & 127.56 \\
+Vanilla   & 85.10 & 164.81 & 156.63 \\
+\hline
+\end{tabu}
+
+\caption{Results of best early-stopped models on the Penn Treebank}
+\label{tab:ptb}
+\end{table}
+
+
 \subsection{War and Peace}
