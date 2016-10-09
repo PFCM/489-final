@@ -724,71 +724,97 @@ maximum length of back-propagation through time chosen from \(\{75, 100\}\) step
 and rank chosen from the options in table~\ref{tab:jsbsizes}. Note that to keep the number
 of parameters constant, changing the rank necessitates changing the number of hidden units
 as well. The batch size was set to \(8\). For nearly all architectures best performance was
-achieved with the lower learning rate while the best maximum length seemed to be more task-dependent.
+achieved with the lower learning rate while the best maximum length was task-dependent.
 
 \subsubsection{Results}
+%\begin{table}
+%\begin{tabu} to \linewidth {r||c|c|c}
+%\hline
+%		 \multicolumn{4}{c}{Nottingham} \\
+%    	& \emph{Train}      & \emph{Valid}    & \emph{Test} \\
+%\hline
+%Vanilla   & \textbf{3.3278} & 3.8680 & \textbf{3.8871}      \\ % sl 100
+%LSTM      & 3.5826          & 3.9683          & 4.0124		\\ % sl 100
+%GRU		  & 3.5876		    & 3.9871		  & 4.0157		\\ % sl 100
+%GMR	  & 3.3940		    & \textbf{3.8472} & 3.9055		\\ % rankone sl 100
+%GMR-C   & 3.7902		    & 4.1242          & 4.1350		\\ % rankhalf sl 75
+%TGU		  & 3.9652		    & 4.2069          & 4.2140		\\ % rankone sl100
+%TGU-C     & 4.0035		    & 4.2332	      & 4.2531		\\ % rankfull sl100
+%lin-TGU   & 3.9387		    & 4.2095	      & 4.2255		\\ % rankone sl 75
+%lin-TGU-C & 3.9927		    & 4.2726          & 4.2907\\ % rankhalf sl 100
+%\hline\hline
+% \multicolumn{4}{c}{JSB} \\
+%    	& \emph{Train} & \emph{Valid} & \emph{Test} \\
+%\hline
+%Vanilla   & 8.0284	        & 8.5417	      & 8.6381   \\ % sl 75
+%LSTM      & 8.2058	        & 8.5444	      & 8.6633   \\ % sl 75
+%GRU		  & 8.1689	        & 8.5657	      & 8.6027   \\ % sl 75
+%GMR	  & 8.0526	        & 8.5465	      & 8.6084   \\ % rankone sl 75
+%GMR-C   & 8.0093	        & \textbf{8.4656} & 8.5369   \\ % rankhalf sl 100
+%TGU		  & \textbf{7.9357} & 8.5140	      & 8.6060   \\ % rankhalf sl 75
+%TGU-C     & 7.9731	        & 8.4926	      & \textbf{8.5307}   \\ % rankone sl 100
+%lin-TGU   & 8.0645	        & 8.7126	      & 8.7282   \\ % rankhalf sl 75
+%lin-TGU-C & 8.2257	        & 8.6549	      & 8.7117   \\ % rankhalf sl 100
+%\hline\hline
+% \multicolumn{4}{c}{Pianomidi} \\
+%    	& \emph{Train} & \emph{Valid} & \emph{Test} \\
+%\hline
+%Vanilla   & 7.3874	        & 8.5956	      & 7.8093   \\ % sl 75
+%LSTM      & 7.3730	        & \textbf{8.5329} & 7.7542   \\ % sl 75
+%GRU		  & 7.3039	        & 8.5671	      & 7.7652   \\ % sl 100
+%GMR	  & 7.3598	        & 8.5890	      & 7.7676   \\ % rankone sl 100
+%GMR-C   & 7.4244	        & 8.7350	      & 7.8615   \\ % rankhalf sl 100
+%TGU		  & \textbf{7.2132} & 8.5981	      & 7.7161   \\ % rankhalf sl 100
+%TGU-C     & 7.2748	        & 8.5382	      & \textbf{7.7003}  \\ % rankhalf sl 75
+%lin-TGU   & 7.2866	        & 8.5807	      & 7.7475   \\ % rankhalf sl 75
+%lin-TGU-C & 7.3216	        & 8.5716	      & 7.7209   \\ % rankhalf sl 75
+%\hline\hline
+% \multicolumn{4}{c}{Muse} \\
+%    	& \emph{Train} & \emph{Valid} & \emph{Test} \\
+%\hline
+%Vanilla   & 6.8954	        & 7.2597	      & 7.3619   \\ % sl 100
+%LSTM      & 7.0777	        & 7.3652	      & 7.4159   \\ % sl 75
+%GRU		  & 7.0001	        & 7.3256	      & 7.3824   \\ % sl 100
+%GMR	  & \textbf{6.8864} & \textbf{7.2089} & \textbf{7.3089}   \\ % rankone sl 100
+%GMR-C   & 6.9135	        & 7.3349	      & 7.4296   \\ % rankfull sl 100
+%TGU		  & 7.4524	        & 7.7076	      & 7.6879   \\ % rankone sl 100
+%TGU-C     & 7.4551	        & 7.6842	      & 7.6719   \\ % rankhalf sl 100
+%lin-TGU   & 7.5478	        & 7.7732	      & 7.7428   \\ % rankhalf sl 75
+%lin-TGU-C & 7.6134	        & 7.8147	      & 7.7949   \\ % rankfull sl 75
+%\hline
+%\end{tabu}
+
 \begin{table}
-\begin{tabu} to \linewidth {r||c|c|c}
+\begin{tabu} to \linewidth {|r||c|c||c|c||c|c||c|c|}
 \hline
-		 \multicolumn{4}{c}{Nottingham} \\
-    	& \emph{Train}      & \emph{Valid}    & \emph{Test} \\
+	&	 \multicolumn{2}{c||}{Nottingham}     & \multicolumn{2}{c||}{JSB}          & \multicolumn{2}{c||}{Pianomidi}   & \multicolumn{2}{c|}{Muse} \\
+    	& \emph{Train}     & \emph{Test}      & \emph{Train}    & \emph{Test}      & \emph{Train}    & \emph{Test}     & \emph{Train}    & \emph{Test} \\
 \hline
-Vanilla   & \textbf{3.3278} & 3.8680 & \textbf{3.8871}      \\ % sl 100
-LSTM      & 3.5826          & 3.9683          & 4.0124		\\ % sl 100
-GRU		  & 3.5876		    & 3.9871		  & 4.0157		\\ % sl 100
-GMR	  & 3.3940		    & \textbf{3.8472} & 3.9055		\\ % rankone sl 100
-GMR-C   & 3.7902		    & 4.1242          & 4.1350		\\ % rankhalf sl 75
-TGU		  & 3.9652		    & 4.2069          & 4.2140		\\ % rankone sl100
-TGU-C     & 4.0035		    & 4.2332	      & 4.2531		\\ % rankfull sl100
-lin-TGU   & 3.9387		    & 4.2095	      & 4.2255		\\ % rankone sl 75
-lin-TGU-C & 3.9927		    & 4.2726          & 4.2907\\ % rankhalf sl 100
+Vanilla   & \textbf{3.3278}& \textbf{3.8871}  & 8.0284	        & 8.6381           & 7.3874	         & 7.8093          & 6.8954	        & 7.3619   \\    
+LSTM      & 3.5826         & 4.0124		      & 8.2058	        & 8.6633           & 7.3730	         & 7.7542          & 7.0777	        & 7.4159   \\ 
+GRU		  & 3.5876		   & 4.0157		      & 8.1689	        & 8.6027           & 7.3039	         & 7.7652          & 7.0001	        & 7.3824   \\
+GMR	      & 3.3940		   & 3.9055		      & 8.0526	        & 8.6084           & 7.3598	         & 7.7676          & \textbf{6.8864}& \textbf{7.3089}\\
+GMR-C     & 3.7902		   & 4.1350		      & 8.0093	        & 8.5369           & 7.4244	         & 7.8615          & 6.9135	        & 7.4296 \\
+TGU		  & 3.9652		   & 4.2140		      & \textbf{7.9357} & 8.6060           & \textbf{7.2132} & 7.7161          & 7.4524	        & 7.6879 \\
+TGU-C     & 4.0035	       & 4.2531		      & 7.9731	        & \textbf{8.5307}  & 7.2748	         & \textbf{7.7003} & 7.4551	        & 7.6719   \\
 \hline\hline
- \multicolumn{4}{c}{JSB} \\
-    	& \emph{Train} & \emph{Valid} & \emph{Test} \\
-\hline
-Vanilla   & 8.0284	        & 8.5417	      & 8.6381   \\ % sl 75
-LSTM      & 8.2058	        & 8.5444	      & 8.6633   \\ % sl 75
-GRU		  & 8.1689	        & 8.5657	      & 8.6027   \\ % sl 75
-GMR	  & 8.0526	        & 8.5465	      & 8.6084   \\ % rankone sl 75
-GMR-C   & 8.0093	        & \textbf{8.4656} & 8.5369   \\ % rankhalf sl 100
-TGU		  & \textbf{7.9357} & 8.5140	      & 8.6060   \\ % rankhalf sl 75
-TGU-C     & 7.9731	        & 8.4926	      & \textbf{8.5307}   \\ % rankone sl 100
-lin-TGU   & 8.0645	        & 8.7126	      & 8.7282   \\ % rankhalf sl 75
-lin-TGU-C & 8.2257	        & 8.6549	      & 8.7117   \\ % rankhalf sl 100
-\hline\hline
- \multicolumn{4}{c}{Pianomidi} \\
-    	& \emph{Train} & \emph{Valid} & \emph{Test} \\
-\hline
-Vanilla   & 7.3874	        & 8.5956	      & 7.8093   \\ % sl 75
-LSTM      & 7.3730	        & \textbf{8.5329} & 7.7542   \\ % sl 75
-GRU		  & 7.3039	        & 8.5671	      & 7.7652   \\ % sl 100
-GMR	  & 7.3598	        & 8.5890	      & 7.7676   \\ % rankone sl 100
-GMR-C   & 7.4244	        & 8.7350	      & 7.8615   \\ % rankhalf sl 100
-TGU		  & \textbf{7.2132} & 8.5981	      & 7.7161   \\ % rankhalf sl 100
-TGU-C     & 7.2748	        & 8.5382	      & \textbf{7.7003}  \\ % rankhalf sl 75
-lin-TGU   & 7.2866	        & 8.5807	      & 7.7475   \\ % rankhalf sl 75
-lin-TGU-C & 7.3216	        & 8.5716	      & 7.7209   \\ % rankhalf sl 75
-\hline\hline
- \multicolumn{4}{c}{Muse} \\
-    	& \emph{Train} & \emph{Valid} & \emph{Test} \\
-\hline
-Vanilla   & 6.8954	        & 7.2597	      & 7.3619   \\ % sl 100
-LSTM      & 7.0777	        & 7.3652	      & 7.4159   \\ % sl 75
-GRU		  & 7.0001	        & 7.3256	      & 7.3824   \\ % sl 100
-GMR	  & \textbf{6.8864} & \textbf{7.2089} & \textbf{7.3089}   \\ % rankone sl 100
-GMR-C   & 6.9135	        & 7.3349	      & 7.4296   \\ % rankfull sl 100
-TGU		  & 7.4524	        & 7.7076	      & 7.6879   \\ % rankone sl 100
-TGU-C     & 7.4551	        & 7.6842	      & 7.6719   \\ % rankhalf sl 100
-lin-TGU   & 7.5478	        & 7.7732	      & 7.7428   \\ % rankhalf sl 75
-lin-TGU-C & 7.6134	        & 7.8147	      & 7.7949   \\ % rankfull sl 75
-\hline
+% \multicolumn{4}{c}{Muse} \\
+%    	& \emph{Train} & \emph{Valid} & \emph{Test} \\
+%\hline
+%Vanilla   & 6.8954	        & 7.2597	      & 7.3619   \\ % sl 100
+%LSTM      & 7.0777	        & 7.3652	      & 7.4159   \\ % sl 75
+%GRU		  & 7.0001	        & 7.3256	      & 7.3824   \\ % sl 100
+%GMR	  & \textbf{6.8864} & \textbf{7.2089} & \textbf{7.3089}   \\ % rankone sl 100
+%GMR-C   & 6.9135	        & 7.3349	      & 7.4296   \\ % rankfull sl 100
+%TGU		  & 7.4524	        & 7.7076	      & 7.6879   \\ % rankone sl 100
+%TGU-C     & 7.4551	        & 7.6842	      & 7.6719   \\ % rankhalf sl 100
+%\hline
 \end{tabu}
 
 \caption[Polyphonic music modelling results]
 {Results on polyphonic music datasets. Numbers are average negative log-likelihood, lower is better.
  ``-C'' appended to the tensor units indicates the bias matrices are folded into the decomposition,
- otherwise they are separate. ``lin-'' appended to the start of the TGUs indicates that they
- use no non-linearity on the candidate state update.}
+ otherwise they are separate.}
 \label{tab:jsbresults}
 \end{table}
 
@@ -862,3 +888,47 @@ Vanilla   & 85.10 & 164.81 & 156.63 \\
 
 
 \subsection{War and Peace}
+We run one final experiment to test whether the regularising effect
+observed so far are due to limiting the expressive power of the tensor
+or simply reducing the parameters.
+
+\subsubsection{Experiment Setup}
+
+\subsubsection{Results}
+\begin{figure}
+\centering
+\begin{subfigure}[t]{0.3\textwidth}
+	\centering
+	\includegraphics[width=\textwidth]{exps/wp/gmr}
+	\caption{GMR-C by relative rank.}
+\end{subfigure}~
+\begin{subfigure}[t]{0.3\textwidth}
+	\centering
+	\includegraphics[width=\textwidth]{exps/wp/lintgu}
+	\caption{TGU-C (with linear candidate states) by relative rank.}
+\end{subfigure}~
+\begin{subfigure}[t]{0.3\textwidth}
+	\centering
+	\includegraphics[width=\textwidth]{exps/wp/others}
+	\caption{Other architectures, exhibiting either slow learning or dramatic overfitting.}
+\end{subfigure}~
+\caption{Training and validation curves on War and Peace. 
+		 Dashed lines indicate training loss, solid lines are the loss on the validation set.}
+\label{fig:wp}
+\end{figure}
+
+\begin{table}
+\begin{tabu} to \textwidth {r||c}
+Architecture & Test Cross-Entropy \\
+\hline
+GMR-C & \textbf{2.018} \\ % 154 width 38 rank
+lin-TGU-C & 2.052 \\ % 148 width 37 rank
+\hline
+Vanilla & 2.128 \\ % 118 width
+GRU & 2.1621 \\ % 75 width
+LSTM & 2.1271 \\% 65 width
+\hline
+\end{tabu}
+\caption{Test set cross entropy (per character) for the best War and Peace models.}
+\label{tab:wptest}
+\end{table}
