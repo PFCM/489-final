@@ -29,7 +29,76 @@ the rest of the terms in the sums will disappear.
 \chapter{Initialization}
 RNNs can be quite sensitive to initialisation, especially with regard to learning long
 time dependencies \autocite{Le2015}. It has been suggested that a good initialisation should
-have eigenvalues on the complex unit circle \autocite{
+have eigenvalues on or inside the complex unit circle \autocite{Zilly2016, Mikolov2015} which
+would suggest initialising to an orthogonal or orthonormal matrix as per \autocite{Henaff2016}.
+
+Figure~\ref{fig:inits} shows some simplified simulation to illustrate the effect of
+different methods of initialisation with different forms of gated recurrence. They are
+simulated with no non-linearity and a single input at the first time step sampled from a unit
+normal. If gate values are required, they are sampled uniformly in \([0,1]\). We then simply
+run the recurrence over the hidden state for a number of time steps plotting each cell's state
+as a grayscale value.
+
+We show three possible procedures: random normal (mean 0, standard deviation 0.01), spectral
+normalised and orthonormal. The spectral normalised matrix is a random normal matrix that
+has been divided by a fraction of its leading singular value. This ensures the spectral
+radius of the matrix is slightly greater than one. To generate a random orthonormal matrix
+we generate a random matrix from a normal distribution, compute its QR decomposition and use the
+Q.
+
+\begin{figure}
+\centering
+\begin{subfigure}[t]{0.3\textwidth}
+\includegraphics[width=\textwidth]{appendix/init/vanillanormal}
+\caption{Vanilla transition, normal initialisation.}
+\end{subfigure}~
+\begin{subfigure}[t]{0.3\textwidth}
+\includegraphics[width=\textwidth]{appendix/init/lstmnormal}
+\caption{Forget gate transition, normal initialisation.}
+\end{subfigure}~
+\begin{subfigure}[t]{0.3\textwidth}
+\includegraphics[width=\textwidth]{appendix/init/grunormal}
+\caption{Convex gate transition, normal initialisation.}
+\end{subfigure}\\
+
+\begin{subfigure}[t]{0.3\textwidth}
+\includegraphics[width=\textwidth]{appendix/init/vanillaspec}
+\caption{Vanilla transition, spectral normalised initialisation.}
+\end{subfigure}~
+\begin{subfigure}[t]{0.3\textwidth}
+\includegraphics[width=\textwidth]{appendix/init/lstmspec}
+\caption{Forget gate transition, spectral normalised initialisation.}
+\end{subfigure}~
+\begin{subfigure}[t]{0.3\textwidth}
+\includegraphics[width=\textwidth]{appendix/init/gruspec}
+\caption{Convex gate transition, spectral normalised initialisation.}
+\end{subfigure}\\
+
+\begin{subfigure}[t]{0.3\textwidth}
+\includegraphics[width=\textwidth]{appendix/init/vanillaorth}
+\caption{Vanilla transition, orthonormal initialisation.}
+\end{subfigure}~
+\begin{subfigure}[t]{0.3\textwidth}
+\includegraphics[width=\textwidth]{appendix/init/lstmorth}
+\caption{Forget gate transition, orthonormal initialisation.}
+\end{subfigure}~
+\begin{subfigure}[t]{0.3\textwidth}
+\includegraphics[width=\textwidth]{appendix/init/gruspec}
+\caption{Convex gate transition, orthonormal initialisation.}
+\end{subfigure}\\
+
+\caption{Example simulations of RNN states from different initialisation. Images are
+independently normalised, with darker values being more negative and lighter more positive.}
+\label{fig:inits}
+\end{figure}
+
+Results are in figure~\ref{fig:inits}. Clearly initialising from a normal distribution is
+insufficient. The spectral normalisation also tends to explode (note that often the initial
+random state is no longer visible, this is because the degree of normalisation required
+to display the final states). Correspondingly we prefer the orthonormal initialisation
+throughout this report, although we note that with Vanilla RNNs which preserve information
+nearly perfectly from this initialisation we occasionally had to scale the entire matrix down
+by a constant factor to avoid exploding early in training.
 
 
 \chapter{Algorithms for Synthetic Tasks}
