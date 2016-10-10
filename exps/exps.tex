@@ -92,6 +92,7 @@ training fairly early compared to many authors as our successful architectures c
 \centering
 \includegraphics[width=0.75\textwidth]{exps/addition/long}
 \caption{Results for addition task, very long sequences.}
+\label{fig:addlong}
 \end{figure}
 
 On sequences up 750 steps, there is little to separate the GRU and the TGU. As they share a gating
@@ -841,30 +842,36 @@ to modify its state in the complex manner captured by the gated architectures.
 
 \subsection{PTB}
 The next experiment aims to test whether reducing the number of parameters in the model by lowering
-the rank of the tensor decomposition can have a useful regularising effect.
+the rank of the tensor decomposition can have a useful regularising effect. For this we use the
+Penn Treebank \autocite{Marcus1993} and attempt to model it by word using the next-step prediction
+framework outlined earlier. This is a relatively small dataset and overfitting becomes a serious
+challenge. Due to this the dataset has been popular for testing regularisation approaches for
+recurrent neural networks \autocite{Zaremba2014, Gal2015}.
 
+We are concerned with how the tensor that computes the gate values in the TGU affects the ability of
+the network to make use of its memory. To test this we fix the number of hidden units and vary the
+rank of the tensor.
+
+\subsubsection{Experiment Setup}
+The data is pre-processed following \autocite{Zaremba2014} by replacing all but the most common
+10,000 words with an `unknown' symbol. We train again using ADAM with a batch size of 20. Base learning
+rate for each model was found via grid search.
+
+All networks trained had 128 hidden units -- for this experiment we do not attempt to keep the number
+of trainable parameters equal between models. We test four variations of the TGU: with and without
+combined biases with with linear or rectified linear candidate updates. For comparison we also train
+an LSTM, GRU and Vanilla RNN. We train for ten epochs and save the model from the best iteration
+according to validation performance to be evaluated against the test data.
 
 \subsubsection{Results}
+For this task we report the average word-level perplexity over the test set. The perplexity is the 
+exponentiation of the cross entropy between the predicted distribution and the target distribution
+(lower is better).
 
-\begin{figure}
-\begin{subfigure}[t]{0.45\textwidth}
-	\includegraphics[width=\textwidth]{exps/ptb/tgu-rank}
-\end{subfigure}~
-\begin{subfigure}[t]{0.45\textwidth}
-	\includegraphics[width=\textwidth]{exps/ptb/tguc-rank}
-\end{subfigure}
-\begin{subfigure}[t]{0.45\textwidth}
-	\includegraphics[width=\textwidth]{exps/ptb/lintgu-rank}
-\end{subfigure}
-\begin{subfigure}[t]{0.45\textwidth}
-	\includegraphics[width=\textwidth]{exps/ptb/lintguc-rank}
-\end{subfigure}
-
-\caption[TGU PTB results by rank]{Test perplexity (lower is better)
- of best early stopped models for
-each type of TGU for a range of ranks. Networks had 128 hidden units.}
-\label{fig:ptbtgurank}
-\end{figure}
+Overall results are
+presented in table~\ref{tab:ptb}. The best performance across all models was achieved by the TGU with
+linear candidate updates and separate biases. Three out of four of the TGUs surpassed the LSTM with
+linear candidate updates having a clear advantage.
 
 \begin{table}
 
@@ -887,12 +894,75 @@ Vanilla   & 85.10 & 164.81 & 156.63 \\
 \end{table}
 
 
+\begin{figure}
+\begin{subfigure}[t]{0.45\textwidth}
+	\includegraphics[width=\textwidth]{exps/ptb/tgu-rank}
+\end{subfigure}~
+\begin{subfigure}[t]{0.45\textwidth}
+	\includegraphics[width=\textwidth]{exps/ptb/tguc-rank}
+\end{subfigure}
+\begin{subfigure}[t]{0.45\textwidth}
+	\includegraphics[width=\textwidth]{exps/ptb/lintgu-rank}
+\end{subfigure}
+\begin{subfigure}[t]{0.45\textwidth}
+	\includegraphics[width=\textwidth]{exps/ptb/lintguc-rank}
+\end{subfigure}
+
+\caption[TGU PTB results by rank]{Test perplexity
+ of best early stopped models for
+each type of TGU for a range of ranks. Networks had 128 hidden units.}
+\label{fig:ptbtgurank}
+\end{figure}
+
+
+Figure~\ref{fig:ptbtgurank} shows results of the TGUs organised by rank. For all models there
+is a clear benefit to constraining the tensor to half the number of hidden states. When the biases
+are combined the difference between rank 64 and 128 is less clear cut, which is to be expected as
+the expressive power of the tensor unit is much more constrained by the rank. That none of the models
+with separate biases improve performance with a rank below 64 indicates that the tensor is performing
+a valuable role as without the tensor the gate unit of these models reduces to the standard
+LSTM/GRU gating unit.
+
+
 \subsection{War and Peace}
 We run one final experiment to test whether the regularising effect
 observed so far are due to limiting the expressive power of the tensor
-or simply reducing the parameters.
+or simply reducing the parameters. We do this by adjusting the number of hidden units so that
+all models have the same number of trainable parameters regardless of rank.
+
+As data for this test we use the novel War and Peace by Leo Tolstoy to build character level language
+models. This is mostly in English and in order to succeed the models must learn to model long term
+temporal dependencies such as opening and closing quotations marks, correct punctuation and grammar
+as well as higher level language concepts.
 
 \subsubsection{Experiment Setup}
+Experiments are set up very similarly to \autocite{Karpathy2016}. Accordingly we split the 3,258,246
+characters into training/validation/test sets with an 80/10/10 \% ratio, giving approximately
+300,000 characters in the training and validation sets. The book contained a vocabulary of 83 characters.
+Again we train using ADAM, we found a learning rate of 0.001 to be robust for all models. We use a
+batch size of 100 and limit back-propagation of gradients to 100 steps. Models were trained for
+50 epochs and the test error was calculated using the best model based on validation error as for the
+other datasets.
+
+We found even the smallest models overfit dramatically even after one or two epochs. To even approach
+reasonable baseline performance, we introduce a bottleneck before the network in the form of very
+small character embeddings. This is equivalent to encoding the input symbols as one-hot vectors
+(size \(83 \times 1\)) and multiplying by a \(8 \times 83\) matrix to embed the symbols into an
+8 dimensional space. This matrix is learned jointly with the model. To further hold off overfitting
+we apply dropout \autocite{Srivastava2014} to the embeddings before feeding them to the network.
+
+All models were constrained to have a budget of 25,000 parameters (including the output layer but
+not including the embedding matrix as this is fixed size). This is quite small, it corresponds to
+a LSTM with 65 hidden units or a Vanilla RNN with 118 on this data. The rank one GMR with combined 
+biases, by contrast,
+was able to have 293 hidden units, although it proved incapable of making use of the them. Vanilla RNNs
+perform surprisingly well on this task, so we test the GMR in addition to the TGU. As we are interested
+in the effect of low-rank tensor decompositions on expressive power, we only report results for models
+with combined biases. We found linear candidate activations consistently outperformed rectifiers for
+the TGU.
+
+For the tensor units we choose rank proportional to the number of hidden units, with the proportion
+giving a measure of the expressive power.
 
 \subsubsection{Results}
 \begin{figure}
@@ -913,9 +983,24 @@ or simply reducing the parameters.
 	\caption{Other architectures, exhibiting either slow learning or dramatic overfitting.}
 \end{subfigure}~
 \caption{Training and validation curves on War and Peace. 
-		 Dashed lines indicate training loss, solid lines are the loss on the validation set.}
+		 Dashed lines indicate training loss, solid lines are the loss on the validation set.
+		 `Full' refers to rank equal to the number of hidden units, `one' simply means rank 1.}
 \label{fig:wp}
 \end{figure}
+
+Training and validation cross entropy are plotted in figure~\ref{fig:wp}, averaged per character. 
+The tensor models both
+show remarkable resistance to overfitting compared to the other architectures. What is particularly
+interesting is that the validation error does not begin to rise seriously at all, regardless of the
+rank. Aside from rank one, which struggles to learn at all, the models benefit slightly from lower
+rank with best test performance being achieved by both tensor models with rank equal to a quarter
+of their number of hidden units.
+
+Perhaps more unexpectedly, even the tensor model with an excessive rank of twice the number of hidden
+units still fails to overfit as dramatically as the LSTM or the Vanilla RNN. This seems to suggest that
+the tensor units work particularly well with the small embeddings and dropout which were primarily
+applied to allow the other architectures to report validation cross entropies below three or four
+at the end of training.
 
 \begin{table}
 \begin{tabu} to \textwidth {r||c}
