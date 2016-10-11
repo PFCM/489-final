@@ -17,39 +17,44 @@ The first layer represents the input (with one unit per coordinate) while subseq
 represent individual neurons. In a standard fully-connected network, every node is connected to all
 nodes in the subsequent layer. When an input is presented to the network, each neuron computes
 an activation by a weighted sum over its inputs followed by the application of some non-linear
-function. Specifically a unit that receives inputs \((x_1, x_2, \ldots, x_n)\) will compute its
-activation \(h\) as:
-\begin{equation}\label{eq:perceptron}
-	h = f\left(\sum_{i=1}^n x_iw_i\right)
-\end{equation} where \((w_1, w_2, \ldots, w_n) + b\) are the weights the neuron gives its inputs and
-\(b\) is a bias, commonly added to enhance the expressive power.
-\(f : \mathbb{R} \to \mathbb{R}\) is some nonlinear function, common examples would be a threshold,
-the logistic sigmoid \(\sigma(x) = \frac{1}{1 + e^{-x}}\) or a linear rectifier
-\(\rho(x) = \max(0, x)\) \autocite{Nair}.
-
-While it is convenient to consider the network in this manner, it is computationally and
-notationally more efficient to consider to express many neurons at once, using vectors and matrices.
-If we consider the input to a network as a vector of features \(\vec{x}\), we can express
-eq. \eqref{eq:perceptron} with a matrix multiplication as
-\begin{equation}\label{eq:vecperceptron}
-	h = f\left(\tran{\vec{w}}\vec{x} + b\right)
-\end{equation} where \(\vec{w}\) is the weights from eq. \eqref{eq:perceptron} as a vector.
-We can generalise this to compute an entire layer of activations at once. Let \(\mat{W}\) be a matrix
-whose rows contain the weight vectors for each neuron in a given layer and \(\vec{b}\) a vector
-containing all of their biases. We can then compute their
-activations at once with
-\begin{equation}
+function. 
+%Specifically a unit that receives inputs \((x_1, x_2, \ldots, x_n)\) will compute its
+%activation \(h\) as:
+%\begin{equation}\label{eq:perceptron}
+%	h = f\left(\sum_{i=1}^n x_iw_i\right)
+%\end{equation} where \((w_1, w_2, \ldots, w_n) + b\) are the weights the neuron gives its inputs and
+%\(b\) is a bias, commonly added to enhance the expressive power.
+%\(f : \mathbb{R} \to \mathbb{R}\) is some nonlinear function, common examples would be a threshold,
+%the logistic sigmoid \(\sigma(x) = \frac{1}{1 + e^{-x}}\) or a linear rectifier
+%\(\rho(x) = \max(0, x)\) \autocite{Nair}.
+Computationally and
+notationally it is efficient to express many neurons at once, using vectors and matrices.
+If we consider the input to a network as a vector of features \(\vec{x}\),
+and let \(\mat{W}\) be a matrix
+whose rows contain the weights for each neuron, the output is computed by
+%\begin{equation}\label{eq:vecperceptron}
+%	h = f\left(\tran{\vec{w}}\vec{x} + b\right)
+%\end{equation} where \(\vec{w}\) is the weights from eq. \eqref{eq:perceptron} as a vector.
+%We can generalise this to compute an entire layer of activations at once. Let \(\mat{W}\) be a matrix
+%whose rows contain the weights for each neuron and \(\vec{b}\) a vector
+%containing all of their biases. We can then compute their
+%activations at once with
+\begin{equation} \label{eq:matperceptron}
 	\vec{h} = f(\mat{W}\vec{x} + \vec{b})
-\end{equation} provided we ensure \(f\) is applied elementwise to the result.
+\end{equation} where \(f: \mathbb{R}^n \mapsto \mathbb{R}^n\) is a non-linear function applied
+element-wise. Common examples include the logistic sigmoid \(\sigma(x) = \frac{1}{1 + e^{-x}}\) or
+a linear rectifier \(\rho(x) = \max(0, x)\) \autocite{Nair}. We also include a bias term \(\vec{b}\)
+which is also learned, enhancing the range of the possible transformations greatly.
 
-This gives us a single layer, a classic MLP will perform this process twice, although the last layer
+This gives us a single layer of neurons, a classic MLP will perform this process twice. 
+The last layer
 is often linear:
 \begin{equation}
 	\hat{\vec{y}} = \mat{W}^{(2)}f(\mat{W}^{(1)}\vec{x} + \vec{b}^{(1)}) + \vec{b}^{(2)}.
 \end{equation} This can be though of as proceeding in stages -- first compute \(\vec{h}\) as before
 and then using another set of weights compute a new transformation of it to get the final output.
 
-Although it can not increase the class of functions a neural network can approximate, it is often
+Such neural networks are universal function approximators \autocite{Hornik1989}. However it is often
 beneficial in practice to increase the depth as this can allow to express more complex relationships
 with only a moderate increase in parameters to be learned \autocite{Telgarsky2016}. This is done
 by recursively applying the above transform with a fresh set of weights and biases. Omitting the
@@ -59,8 +64,8 @@ biases for clarity this gives us the following for a network with \(l-1\) hidden
 \end{equation} Naively adding depth in this fashion can cause the network to become very challenging
 to train \autocite{Glorot2010, Saxe2013}. Several methods have been proposed which successfully
 alleviate this, such as layer-wise pre-training \autocite{Hinton2006,Vincent2010} and more
-recently residual connections which change the structure of the graph to allow better flow of 
-information \autocite{He2015}.
+recently residual or skip connections which change the structure of the graph to allow better flow of 
+information \autocite{He2015, Huang2016}.
 
 \subsection{Training}
 These networks are typically trained in a supervised fashion. Denote the parameters of the network
@@ -71,18 +76,19 @@ the output of the network for a given input \(\vec{x}\) and set of parameters as
 Let \(\mathcal{X}\) be the set of possible \(\vec{x}\) values and \(\mathcal{Y}\) the set of
 possible \(\vec{y}\) values.
 We
-wish to learn a mapping which will produce each \(\vec{y}_i\) from the given \(\vec{x}_i\). 
+wish to learn a mapping which will transform each  \(\vec{x}_i\) into \(\vec{y}_i\).
 To do this we define a loss function
-\(\mathcal{L} : \mathcal{Y} \times \mathcal{Y} \to \mathbb{R}\) which maps pairs of valid outputs
+\(\mathcal{L} : \mathcal{Y} \times \mathcal{Y} \mapsto \mathbb{R}\) which maps pairs of valid outputs
 to a real number, such that \(\mathcal{L}(\vec{y}, \hat{\vec{y}}) = 0\) implies 
 \(\vec{y} = \hat{\vec{y}}\). Typical loss functions are the squared error
-\begin{equation} \label{eq:squarederror}
-	\mathcal{L}_{SE}(\vec{y}, \hat{\vec{y}}) = ||\vec{y} - \hat{\vec{y}}||^2_2 
+\( \label{eq:squarederror}
+	\mathcal{L}_{SE}(\vec{y}, \hat{\vec{y}}) 
+	%= ||\vec{y} - \hat{\vec{y}}||^2_2 
 	= \sum_d (y_d - \hat{y}_d)^2
-\end{equation} or the cross entropy
-\begin{equation}
+\) or the cross entropy
+\(
 	\mathcal{L}_{CE}(\vec{y}, \hat{\vec{y}}) = -\sum_d y_d \log(\hat{y}_d),
-\end{equation} ensuring some safeguards are put in place to avoid attempting to compute \(\log 0\).
+\) ensuring some safeguards are put in place to avoid attempting to compute \(\log 0\).
 The cross entropy is typically preferred when the targets can be interpreted as
 probabilities.\footnote{For example, discrete class labels -- we can convert them to a one-of-\(n\)
 (often termed ``one-hot'') taking discrete labels between 1 and \(n\) to \(n\) dimensional vectors
@@ -92,7 +98,7 @@ corresponds exactly to the negative log-likelihood of the correct class.} This r
 the output of the network to a probability, typically done with either the sigmoid function 
 mentioned above or the softmax \(s_i(\vec{x}) = e^{x_i}/\sum_j e^{x_j}\).
 
-The best set of parameters for the network, \(\theta^*\), is then the set which minimises the
+The best set of parameters for the network, \(\theta^*\), is the set which minimises the
 loss across the data items. Training the network amounts to solving the following
 optimisation problem:
 \begin{equation}\label{eq:nnoptimise}
@@ -106,8 +112,8 @@ form, each weight is updated at each iteration as follows:
 	\mat{W} \gets \mat{W} - \eta \cdot \nabla_{\mat{W}}\mathcal{L}
 \end{equation} where \(\eta\) is a hyper parameter adjusting the step size (called the
 \emph{learning rate}) and \(\nabla_{\mat{W}}\mathcal{L}\) is the gradient of the loss with respect
-to the \(\mat{W}\). Typically the gradient is evaluated over a small subset or ``mini-batch''
- of the data per iteration which is akin to using a noisy estimate of the true gradient.
+to \(\mat{W}\). Typically the gradient is evaluated over a small subset or ``mini-batch''
+ of the data per iteration which gives a noisy estimate of the true gradient.
 The gradients of deep networks can be calculated using \emph{back-propagation}, which amounts
 to the chain rule of calculus and the observation that neural networks consist of many
 composed functions \autocite{Rumelhart1986}. In practice this is assisted greatly by software
@@ -115,13 +121,10 @@ packages which can determine the derivatives of a given function using automatic
 differentiation such as Tensorflow \autocite{Abadi2015} or Theano
  \autocite{TheTheanoDevelopmentTeam2016}.
 
-%\hl{Mention improved SGDs? Adagrad, Adam, RMSProp?}
-
-
 \section{Recurrent Neural Networks}
-Recurrent Neural Networks (RNNs) of the form considered here generalise feed-forward networks to
-address problems in which we wish to map a \emph{sequence} of inputs 
-\(\vec{x} = (\vec{x}_1, \vec{x}_2, \dots \vec{x}_T) \) to a sequence of outputs
+Recurrent Neural Networks (RNNs) considered here generalise feed-forward networks to
+address problems in which we wish to map a \emph{sequence} of inputs vectors
+\(\vec{x} = (\vec{x}_1, \vec{x}_2, \dots \vec{x}_T) \) to a sequence of output vectors
 \(\vec{y} = (\vec{y}_1, \vec{y}_2, \dots \vec{y}_T) \). They have been applied successful to a
 wide range of tasks which can be framed in this way including statistical language modelling
 \autocite{Mikolov2012} (including machine translation \autocite{Cho2014, Wu2016a}), speech 
@@ -132,7 +135,7 @@ image generation \autocite{Gregor2015}, automatic captioning \autocite{Vinyals20
 \subsection{Classical Formulation}
 An RNN is able to maintain context over a sequence by transferring its hidden state from one
 time step to the next. We refer to the vector of states at time \(t\) as \(\vec{h}_t\).
-The classic RNN (often termed ``vanilla'') originally proposed in \autocite{Elman1990}
+The classic RNN (often termed ``Vanilla'') originally proposed in \autocite{Elman1990}
 computes its hidden states with the following recurrence:
 \begin{equation}
 	\vec{h}_t = f(\mat{W}\vec{h}_{t-1} + \mat{U}\vec{x}_t +  \vec{b})
@@ -143,17 +146,17 @@ states in the same fashion as the feed-forward networks above. This remains the 
 extended architectures considered below, the key difference is the manner in which the states
 are produced.
 
-Equation \eqref{eq:vanillarnn} bears a striking resemblance to the building block of a 
+Equation \eqref{eq:vanillarnn} is closely related to the building block of a 
 feed-forward network. The key difference is the (square) matrix \(\mat{W}\) which contains weights
 controlling how the previous state affects the computation of the new activations.
 
 \subsection{Training}
 We can train this (or any of the variants we will see subsequently) using back-propagation.
-Often termed ``Back Propagation Through Time'' \autocite{Werbos1990} which requires using the
+Often termed ``Back Propagation Through Time'' \autocite{Werbos1990}, this requires using the
 chain rule to determine the gradients of the loss with respect to the network parameters in
-the same manner as for feedforward networks.
+the same manner as feed-forward networks.
 
-To understand what is required to perform this, consider a loss function for the whole sequence of
+To illustrate this, consider a loss function for the whole sequence of
 the form
 \begin{equation}
 	\mathcal{L}(\hat{\vec{y}}_1, \hat{\vec{y}}_2, \dots, \hat{\vec{y}}_T,
@@ -213,7 +216,7 @@ propagate it backward in time, leading to a negligible update to the weights.
  matrices, alternating between \(\nabla_{\vec{z}_k} f\) and \(\mat{W}\). If we assume for
  illustrative purposes that \(f(\cdot)\) is the identity function (so we have a linear network),
 then the loss vector is multiplied by \(\mat{W}\) taken to the \((j-i)\)-th power. If the largest
-eigenvalue of \(\mat{W}\) is large, then this will cause the gradient to eventually explode.
+eigenvalue of \(\mat{W}\) is large, then this will cause the gradient to rapidly explode.
 If the largest eigenvalue is small, then the gradient will vanish. This issue was first presented
 in 1994 \autocite{Bengio1994} where it was shown to be unavoidable if the network needs to both store
 information and be robust to noise. However, this has not precluded further research into alleviating
@@ -225,9 +228,9 @@ mitigated by using a \emph{saturating} non-linearity so that the gradient tends 
 hidden states grow, this only exacerbates the vanishing problem. 
 
 The key symptom of vanishing gradients in RNNs is that it makes it much harder to learn to
-store information for long time periods \autocite{Bengio1994}. This makes RNNs often struggle to
+store information for long time periods \autocite{Bengio1994}. This makes RNNs struggle to
 solve simple-seeming tasks in which the solution requires remembering an input for many
-time steps. 
+time steps.
 
 \subsubsection{Butterfly Effect}
 A second issue when training RNNs can be illustrated by viewing them as iterated non-linear	
@@ -235,7 +238,7 @@ dynamical systems and thus susceptible to the ``butterfly effect'': seemingly ne
 in initial conditions can lead to catastrophic changes after a number of iterations
 \autocite{Lorenz1963}. In RNNs this manifests as near-discontinuity of the loss surface
 \autocite{Pascanu2012} as a change (for example, to a weight during back-propagation) which may
-even reduce the loss for a short period can cause instabilities further on which lead to steep
+be in a downward direction on the loss surface can cause instabilities which lead to steep
 increases in loss. This problem is not as well studied as vanishing gradients although some
 partial solutions exist such as clipping the norm of gradients \autocite{Pascanu2012} or
 using a regulariser to encourage gradual changes in hidden state \autocite{Krueger2016}.
@@ -247,8 +250,8 @@ Recurrent Unit (GRU). Both of these belong to a class of \emph{gated} RNNs, whic
 markedly different method of computing a new state.
 
 The LSTM was proposed to alleviate the vanishing gradient problem. It uses a number of gates
-to control the flow of information during the computation of new states. Although a large number
-of variants exist, the standard LSTM we will consider here has the form: 
+to control the flow of information during the computation of new states. Although a number
+of subtle variants exist, the standard LSTM we will consider here has the form: 
 \autocite{Hochreiter1997, Graves2013}
 \begin{align}\label{eq:LSTM}
 	\vec{h}_t &= \vec{o}_i \odot \tau(\vec{c}_t)\\
@@ -263,7 +266,7 @@ is used to denote elementwise multiplication between vectors. These equations ca
 at face value -- the key elements are \(\vec{i}_t, \vec{o}_t, \vec{f}_t\), termed the
 \emph{input}, \emph{output} and \emph{forget} gates respectively, are computed in the same fashion
 as the activations of a vanilla neural network but use sigmoid activation function which varies
-smoothly between zero and one. Combining this with elementwise multiplication has the eponymous
+smoothly between zero and one. Combining this with element-wise multiplication has the eponymous
 gating effect, attenuating the contributions of other components. 
 
 The output gate is fairly straightforward, it simply allows the network to prevent its hidden
@@ -298,6 +301,16 @@ allowing the state to skip a time step and is directly analogous to the residual
 now commonly used to address the vanishing gradient problem in very deep feed-forward networks
 \autocite{He2015, Duvenaud2014, Szegedy2016}. Unfortunately the presence of the gate complicates
 this perspective -- this will be analysed in detail in chapter~\ref{C:arch}.
+
+These architectures are often used at large scale to solve very hard real world tasks. However,
+the synthetic tasks on which the LSTM was originally validated \autocite{Hochreiter1997}
+ overlook a key requirement of a successful RNN architecture. The tasks focus on problems involving long
+time dependencies, but all involve remember either symbols from a fixed, small vocabulary or a single
+real number. We suggest that it is also necessary to evaluate the ability of RNNs to learn to use
+all of their memory cells at once to store distributed representations of the current context from which
+elements of the sequence can be reconstructed. While this ability is used implicitly, especially in
+architectural advancements targeted at language modelling \autocite{Cho2014b, Chan2015, Luong2016},
+no specific empirical validation of this ability is regularly carried out.
 
 
 \section{Other Ideas}
@@ -491,7 +504,7 @@ being \(1\) given a pair of inputs \(\vec{x}\) and \(\vec{y}\) is defined as
 	p(h_k | \vec{x},\vec{y}) = \sigma\left(\sum_{ij} W_{ijk}x_iy_j \right)
 \end{equation} where \(\sigma(\cdot)\) is the sigmoid discussed earlier \autocite{Memisevic2007}.
 This architecture very naturally extends the operation of a feed-forward network to deal with
-two inputs (compare equations \eqref{eq:perceptron} and \eqref{eq:grbm}), but the size of the
+two inputs, but the size of the
 tensor \(\tensor{W}\) is a serious limitation. This work outlines three key points: 
 multiplicative interactions are somehow a natural way of handling multiple distinct inputs,
 multiplicative interactions are properly parameterised by tensors

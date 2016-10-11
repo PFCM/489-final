@@ -1,2 +1,35 @@
+% !TEX root = ../proj_report_outline.tex
 \chapter{Conclusions}\label{C:con}
-The conclusions are presented in this Chapter.
+We have presented a new class of promising architectures for recurrent neural networks.
+Existing approaches are either seriously flawed or opaque and over-complicated.
+This necessitates finding more elegant solutions which maintain the performance but keep
+only components with clearly defined roles and a minimum of confusion and complexity.
+
+The first key observation is that gated RNNs have an inherent tensorial structure. Detailed
+analysis of this structure indicates that it contributes greatly to their expressive power.
+This leads to the idea of designing new networks that make explicit this structure, allowing
+for control over the balance between representative capacity and storage requirements by using
+a well known tensor decomposition. The aim behind drawing this structure out and making it
+explicit is that by fully realising the important underlying processes we can construct simplified
+architectures by removing extraneous parts.
+
+The second key observation is that networks with a gated, additive state update are very appealing.
+This structure allows the network to sit on the border between vanishing and
+exploding gradients and should therefore allow excellent learning performance. Correspondingly we
+decide to keep this structure. We note that this means we have three choices to make: how to implement
+the gate, how to compute its value and how to compute the additive update. By reasoned analysis,
+we arrive at clear conclusions for all of them, including taking the novel step of computing an
+additive update which does not depend on the previous hidden state. This is a key novelty in our
+proposed class of architectures which allows them to allocate more expressive power to controlling
+the use of their memory.
+
+Empirically, we find our conclusions are justified. It demonstrates the ability to store items in
+its memory for long time periods and the ability to store and reproduce arbitrary inputs well in advance
+of existing architectures. This illustrates the benefits of simplifying the architecture -- as each
+component has a clearly defined role we observe rapid learning even on highly challenging tasks.
+We also investigate the role of the extra hyper-parameter introduced by utilising a tensor decomposition.
+This is found to have a useful regularising effect, helping to improve generalisation performance when
+set appropriately. Further, we are able to derive a useful rule of thumb to be able to set it without
+excessive exploration.
+
+\hl{Now we need to say a few bits and pieces about general life with rnns and how it can better now}

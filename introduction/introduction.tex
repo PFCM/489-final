@@ -38,14 +38,16 @@ Multiplicative RNN (GMR) and the Tensor Gate Unit (TGU).
 The GMR is a very simple way to incorporate a tensor into a neural network and generalises a number of
 recently proposed architectures \autocite{Martens2011a, Wu2016}. The TGU includes an
 additive state update and standard multiplicative gates in addition to the bilinear product. 
-The architecture is based on the intuition. Facilitating this suggests a distinct architecture
-with a unique and clear motivation.
+The architecture is based on the observation that the gate is the most important part of the architecture
+and that if we ensure it is sufficiently expressive, we can remove a number of other dependencies. This
+results in a unique, clearly defined architecture with full expressive power and a minimum of extraneous
+elements.
 
 These architectures are then evaluated empirically. We consider standard synthetic tasks and achieve
 excellent results including successfully training a TGU to capture time dependencies up to 10,000 steps,
 more than 10 times the best previously reported. None of the synthetic tasks common in the
 literature adequately exercise the ability of the model to store and retrieve arbitrary patterns.
-As this is an essential sub-task for solving many complex problems we propose a novel synthetic
+As this is an essential task for solving many complex problems we propose a novel synthetic
 form of \emph{variable binding} which tests the ability of the models to use their hidden units in this
 fashion.
 
