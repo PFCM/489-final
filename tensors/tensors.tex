@@ -3,28 +3,30 @@
 \chapter{Three-way Tensors}\label{C:tens}
 
 In order to represent functions of two arguments with neural networks, three-way tensors are 
-unavoidable. In this chapter we discuss the vector-tensor-vector bilinear product and assess its
-suitability, both theoretically and empirically, to be used inside a neural network,
+unavoidable. They have been used, directly or indirectly in a number of highly
+successful architectures, often without regard for the underlying structure and interpretation of the
+operation. In this chapter we discuss the vector-tensor-vector bilinear product seen in 
+eq.~\eqref{eq:grbm} and used implicitly throughout successful multiplicative architectures.
 
 This product admits a surprising
 number of interpretations including theorem~\ref{thm:xor} -- that it allows us to operate on a
-pairwise exclusive-or of features. This is a powerful result which shows that admitting tensors
+pair-wise exclusive-or of features. This is a powerful result which shows that admitting tensors
 into neural networks can solve the exclusive-or problem without any hidden units. Further, we
-demonstrate the expressive power of the tensor by showing that a polynomially sized network with a
+demonstrate the expressive power of the tensor by showing that a polynomially sized two layer
+network with a
 single tensor product is capable of expressing a class of functions which standard two layer networks
 can not approximate accurately without exponential size.
 
-The downside of these tensor products is the storage requirements. We investigate methods for
-decomposing tensors into products of smaller objects. Finally we conduct experiments to show that
-learning the coefficients of a decomposed tensor can be done in situ with gradient descent. We attempt
-to investigate the tradeoff between the complexity of the decomposition and the expressivity of the
-product and find that it scales as expected.
+The downside of these tensors is the storage requirements. We discuss a well-known method for
+expressing the tensor as a product of much smaller matrices and
+finally conduct experiments to show that
+learning the coefficients of a decomposed tensor can be done in situ with gradient descent.
 
 \section{Definitions}
 Formally, we refer to a multi-dimensional array which requires \(n\) indices to address a single
-(scalar) element as a \(n\)-way tensor and occasionally refer to \(n\) as the number of dimensions of
-the tensor. In this sense a matrix is a two-way tensor and a vector
-a one-way tensor, although we will use their usual names for clarity. Notationally, mostly follow
+(scalar) element as a \(n\)-way tensor, \(n\) is often referred to as the number of dimensions or modes
+of the tensor. A matrix is then a two-way tensor and a vector
+a one-way tensor although we will use their usual names for clarity. Notationally, we follow
 \autocite{Kolda2009} deviating only where it would become unwieldy.
 We denote tensors with three or more dimensions with single calligraphic boldface letters such
 as \(\tensor{W}\). Matrices and vectors will be denoted with upper and lower case boldface letters
@@ -36,12 +38,12 @@ with a specific value. For example, \(\mat{A}_{i \midbullet}\) would denote the 
 matrix \(\mat{A}\).
 For three-way tensors we refer to the vector elements produced by fixing two indices as 
 \emph{threads}. It is also possible to form matrices by fixing only one index -- we refer to these
-as \emph{slices}. Table~\ref{tab:notation} in the appendix provides examples of the possibilities.
+as \emph{slices}. Table~\ref{tab:notation} in the appendix provides examples.
 
 
 When dealing with tensor-tensor products, it is important to be precise as there are often
 a number of possible permutations of indices that would lead to a valid operation. The downside of
-this is that it leads to unwieldy notation. Fortunately, we are only concerned with a a few of
+this is that it leads to unwieldy notation. Fortunately, we are only concerned with a few of
 special cases. In particular, we need to multiply a three-tensor by a vector and a matrix by a
 vector. Matrix-vector multiplication consists of taking the dot product of the vector with
 each row of the matrix. For example, with a matrix \(\mat{A} \in \mathbb{R}^{m \times n}\) and a
@@ -49,27 +51,37 @@ vector \(\vec{x} \in \mathbb{R}^n\), if \(\vec{y} = \mat{A}\vec{x}\) (with \(\ve
 in \(\mathbb{R}^m\)), then
 \begin{equation}\label{eq:matmul}
 	y_i = \sum_j^n A_{ij} x_j
-		= \langle \vec{A}_i, \vec{x}\rangle
+		= \langle \vec{A}_{i \midbullet}, \vec{x}\rangle
 \end{equation} where \(\langle \cdot, \cdot \rangle\) denotes the inner (dot) product. This can be viewed
-as taking all of the vectors formed by fixing the first index of \(\mat{A}\) while allowing the second
+as taking all of the vectors formed by fixing the first index of \(\mat{A}\) and allowing the second
 to vary and computing their inner product with \(\vec{x}\). To perform the same operation using the
-columns of \(\mat{A}\) we need to fix the second index, the would typically be done by exchanging the
+columns of \(\mat{A}\) we need to fix the second index, which can be done by exchanging the
 order: \(\tran{\vec{x}}\mat{A}\). This kind of operation is sometimes referred to as a
 \emph{contractive} product, especially in the physical sciences \autocite{Orus2014}. This name
 arises because we form the output by joining a shared dimension (by element-wise multiplication) and
 contracting it with a sum.
 
 We can generalise the operation to tensors: choose an index over which to perform the product,
-collect every thread formed by fixing all but that one index and compute their inner product with the
-given vector. If the tensor has \(n\) indices, the result will have \(n-1\). A three tensor is in
+collect every thread formed by fixing all but that one index and take their inner product with the
+given vector. If the tensor has \(n\) dimensions, the result will have \(n-1\). A three tensor is in
 this way reduced to a matrix. Kolda and Bader introduce the operator
  \(\;\cdot \bar{\times}_i \cdot\;\)
 for this, where \(i\) represents the index to vary \autocite{Kolda2009}. For the bilinear forms
 we are concerned with, this leads to the following notation:
 \begin{align}
-	\vec{z} &= \tensor{W} \;\bar{\times}_1\; \vec{x}\; \bar{\times}_2\; \vec{y} .
+	\vec{z} &= \tensor{W} \;\bar{\times}_1\; \vec{x}\; \bar{\times}_2\; \vec{y},
+	\implies z_j = \sum_i \sum_k W_{ijk}x_iy_k.
 	\label{eq:bilinearkolda}
 \end{align}
+When \(\tensor{W}\) is a three-way tensor, we prefer a more compact notation
+\begin{equation}\label{eq:bilintensor}
+	\vec{z} = \tran{\vec{x}}\tensor{W}\vec{y}.
+\end{equation} This loses none of the precision of the more verbose notation provided we make clear
+that we intend \(\vec{x}\) to operate along the first dimension of the tensor and \(\vec{y}\) the
+third. With either notation, for a tensor 
+\(\tensor{W} \in \mathbb{R}^{n_1 \times n_2 \times n_3}\), we must have 
+\(\vec{x}\in \mathbb{R}^{n_1}\), \(\vec{y} \in \mathbb{R}^{n_3}\) and the result 
+\(\vec{z}\in\mathbb{R}^{n_2}\).
 
 \begin{figure}
 	\centering
@@ -79,14 +91,14 @@ we are concerned with, this leads to the following notation:
 		\draw (0,0) node {} -- (-1,0);
 	\end{tikzpicture}
 	\caption{Vector \(\vec{a}\in\mathbb{R}^{n_1}\)}\label{fig:tnd:vec}
-	\end{subfigure} ~
+	\end{subfigure} \hfill
 	\begin{subfigure}[t]{0.31\textwidth}
 	\centering
 	\begin{tikzpicture}
 		\draw (1,0) -- (0,0) node {} -- (-1,0);
 	\end{tikzpicture}
 	\caption{Matrix \(\mat{B}\in\mathbb{R}^{n_1 \times n_2}\)}\label{fig:tnd:mat}
-	\end{subfigure} ~
+	\end{subfigure}\hfill
 	\begin{subfigure}[t]{0.31\textwidth}
 	\centering
 	\begin{tikzpicture}
@@ -103,27 +115,14 @@ we are concerned with, this leads to the following notation:
 	\label{fig:tnegs}
 \end{figure}
 
-When \(\tensor{W}\) is a three-way tensor, we prefer a more compact notation
-\begin{equation}\label{eq:bilintensor}
-	\vec{z} = \tran{\vec{x}}\tensor{W}\vec{y}.
-\end{equation} This loses none of the precision of the more verbose notation provided we make clear
-that we intend \(\vec{x}\) to operate along the first dimension of the tensor and \(\vec{y}\) the
-third such that \((\tran{\vec{x}}\tensor{W})\vec{y}\) exactly corresponds with 
-equation~\eqref{eq:bilinearkolda}. With either notation, for a tensor 
-\(\tensor{W} \in \mathbb{R}^{n_1 \times n_2 \times n_3}\), we must have that 
-\(\vec{x}\in \mathbb{R}^{n_1}\), \(\vec{y} \in \mathbb{R}^{n_3}\) and the result 
-\(\vec{z}\in\mathbb{R}^{n_2}\).
-
 An intuitive way to illustrate these ideas is using Tensor Network Diagrams
 \autocite{Cichocki2016, Orus2014}. In these diagrams, each object is represented
 as a circle, with each free `arm' representing an index used to address elements.
-A vector therefore has one free arm, a matrix two and so on. Scalars will have
-no arms. Figure~\ref{fig:tnegs} provides examples for these simple objects. 
-
-Where these diagrams are especially useful is for representing contractive products
-where we sum over the range of a shared index. We represent this by joining the
+A scalar has no free arms, a vector one, a matrix two and so on.
+Figure~\ref{fig:tnegs} provides examples for these simple objects. 
+These diagrams represent a contractive product by joining the
 respective arms. As an example, a matrix-vector product \(\vec{y} = \mat{Ax}\)
-has such a contraction: \(y_{i} = \sum_{j}A_{ij}x_{j}\). This is shown in
+has such a contraction by eq.~\eqref{eq:matmul}, shown in
 figure~\ref{fig:tnmatvec} -- it is clear that there is only a single free arm, so the
 result is a vector as it should be. Figure~\ref{fig:tnprods} shows some examples
 of these kinds of products.
@@ -142,7 +141,7 @@ of these kinds of products.
 		\caption{Matrix-vector product \(\mat{A}\vec{y}\), one free arm indicates
 		 the result is a vector.}
 		 \label{fig:tnmatvec}
-	\end{subfigure} ~
+	\end{subfigure} \hfill
 	\begin{subfigure}[t]{0.45\textwidth}
 		\centering
 		\begin{tikzpicture}
@@ -168,7 +167,7 @@ of these kinds of products.
 			\node[below=1em of y, fill=none, draw=none, anchor=mid] {\(\vec{y}\)};
 		\end{tikzpicture}
 		\caption{Tensor-vector product producing a matrix.}
-	\end{subfigure} ~
+	\end{subfigure} \hfill
 	\begin{subfigure}[t]{0.45\textwidth}
 		\centering
 		\begin{tikzpicture}
@@ -189,20 +188,18 @@ of these kinds of products.
 
 \section{Interpreting Bilinear Products}\label{sec:tensorinterps}
 There are several ways to describe the operation performed by the bilinear products we are
-concerned with. These correspond to different interpretations of the results. The following
+concerned which correspond to different interpretations of the results. The following
 interpretations provide insight both into what is actually being calculated and how the product might
-be applicable to a neural network setting. In all of the below we use the above definitions of
+be applicable in a neural network setting. In all of the below we use the previous definitions of
 \(\vec{x}, \vec{y}, \vec{z}\) and \(\tensor{W}\).
 
 \subsection{Stacked bilinear forms}
-If we consider the expression for a single element of \(\vec{z}\), we get
-\begin{equation} \label{eq:singlezsum}
-	z_j = \sum_i^{n_1} \sum_k^{n_3} W_{ijk} x_i y_k
-\end{equation} as expected. We can re-write this in terms of the slices of \(\tensor{W}\) as
+If we consider the expression for a single element of \(\vec{z}\) in eq.~\ref{eq:bilinearkolda}, 
+we can re-write this in terms of the slices of \(\tensor{W}\) as
 \(\label{eq:singlezslice}
-	z_j = \tran{\vec{x}}\tensor{W}_{\cdot j \cdot}\vec{y}
-\) which reveals the motivation behind the notation in equation~\eqref{eq:bilintensor}.
-It also shows clearly each element of \(\vec{z}\) is linear  in \(\vec{x}\) or \(\vec{y}\) if
+	z_j = \tran{\vec{x}}\tensor{W}_{\cdot j \cdot}\vec{y}.
+\) This reveals the motivation behind the notation in eq.~\eqref{eq:bilintensor}
+and shows each element of \(\vec{z}\) is linear  in \(\vec{x}\) or \(\vec{y}\) if
 the other is held constant.
 
 This provides an interpretation
@@ -215,36 +212,35 @@ in terms of similarities. If we consider the standard dot product of two vectors
 = \sum_{i=1}^ma_ib_i
  = {\cos\theta}{\cdot||\vec{a}||_2\cdot||\vec{b}||_2} 
 \end{equation} where
-\(\theta\) is the angle in the angle between the vectors. If the product
-is positive, the two vectors are pointing in a similar direction and if it is negative they
-are in opposite directions. If it is exactly zero, they must be orthogonal. The dot product
-therefore provides us with a notion of the similarity between two vectors.
+\(\theta\) is the angle in the angle between the vectors. If the dot product
+is positive the two vectors are pointing in a similar direction and if it is negative they
+are in opposing directions. If it is exactly zero, they must be orthogonal. The dot product
+therefore provides us with a measure of the similarity between two vectors.
 Indeed if we normalise the vectors by dividing each component by their \(l_2\) norm we
 recover exactly the widely used cosine similarity, common in information retrieval 
-\autocite{Singhal2001, Tan2006} . Note that
-we can generalise this idea by inserting a matrix of (potentially learned)
+\autocite{Singhal2001, Tan2006}.
+
+We can generalise this idea by inserting a matrix of (potentially learned)
 weights \(\mat{U}\) which enables us
 to define general scalar bilinear forms
 \begin{equation}
 	\langle\vec{a}, \mat{U}\vec{b}\rangle = \langle\vec{a}^\mathsf{T}\mat{U}, \vec{b}\rangle
 	= \vec{a}^\mathsf{T}\mat{U}\vec{b}.
-\end{equation}
-
-In a bilinear tensor product, each component of the result takes this form.
-Observe that a matrix-vector multiplication consists of
-taking the dot product of the vector with each row or column of the matrix. Given our current
-interpretation of the dot product as an un-normalised similarity measure, we can also
+\end{equation} In a bilinear tensor product, each component of the result has this form.
+As a matrix-vector multiplication consists of
+taking the dot product of the vector with each row or column of the matrix
+we can also
 interpret a matrix-vector multiplication as computing the similarity of the vector with each
 row or column of the matrix. 
 
-We can then think of the rows of the matrix \(\mat{U}\) in the
-above as containing patterns to look for in the \(\vec{b}\) vector and the columns to
-contain patterns to test for in the \(\vec{a}\) vector. If we consider the vectors 
+We can think of the rows of the matrix \(\mat{U}\) 
+as containing patterns to look for in the \(\vec{b}\) vector and the columns to
+contain patterns to look for in the \(\vec{a}\) vector. If we consider the vectors 
 \(\vec{a}\) and \(\vec{b}\) to come from different feature spaces, the matrix \(\mat{U}\)
 provides a conversion between them allowing us to directly compare the two. We can therefore
 interpret each coordinate of the result of the bilinear tensor product as being an
-independent similarity measure with a different interpretation of the underlying
-feature space. In this sense, where a matrix multiplication looks for patterns in a single input
+independent similarity measure based on different interpretations of the underlying
+feature spaces. In this sense, where a matrix multiplication looks for patterns in a single input
 space a bilinear product looks for \emph{joint} patterns in the combined input spaces of
 \(\vec{x}\) and \(\vec{y}\). This becomes clear if we write out each element of the result
 vector
@@ -274,7 +270,7 @@ vector
 Following on from the above discussion we claim that for each coordinate of the output we are
 computing a \emph{similarity vector} which we compare to the remaining input to generate a
 scalar value. If we consider all coordinates at once, we see that this amounts to having
-one input choose a matrix, which we then multiply by the remaining input vector. 
+one input choose a matrix of patterns, which we then multiply by the remaining input vector. 
 %We have
 %refrained from making these points in terms of the specific vectors referenced above to make
 %the point that the operation is completely symmetrical. While it aids interpretation to think
@@ -282,21 +278,21 @@ one input choose a matrix, which we then multiply by the remaining input vector.
 %intuition after switching the vectors, give or take some transposes.
 
 This interpretation is clear from the expression of the product in
-equation~\eqref{eq:bilinearkolda}. Simply by inserting parentheses we observe that we are
-first generating a matrix in somehow dependent on the first input and multiplying
-the second input by that matrix. In this sense we allow one input to choose patterns to look for
-in the other input.
+eq.~\eqref{eq:bilinearkolda}. Simply by inserting parentheses we observe that we are
+first generating a matrix dependent on the first input and multiplying
+the second input by that matrix.
 
 This intuition of choosing a matrix is suggested in \autocite{Sutskever2013} in the
-context of language modelling with RNNs. It is suggested that allowing the current input
-character to choose the hidden-to-hidden weights matrix should confer benefits. 
-This intuition (and the proposed factorisation of the tensor) was put to use earlier in
-Conditional Restricted Boltzmann Machines \autocite{Taylor}in a more feed-forward setting.
+context of language modelling with RNNs. The suggestion is that allowing the current input
+character to choose the hidden-to-hidden weights matrix should allow better use of the context. 
+%This intuition (and the proposed factorisation of the tensor) was put to use earlier in
+%Conditional Restricted Boltzmann Machines \autocite{Taylor} in a more feed-forward setting.
 
 Although this provides a powerful insight into the bilinear product, it is worth reinforcing that
 the product is entirely symmetrical. We can not think purely about it as \(\vec{x}\) choosing a matrix
 for \(\vec{y}\) as the converse is equally true.
 
+% MAYBE CUT
 \subsection{Tensor as an independent basis}
 Extending the above to try and capture the symmetry of the operation, we introduce
 the notion that the coefficients of the tensor represent a basis in which to compare the
@@ -317,25 +313,26 @@ of weighted sums; first over slices and then over rows or columns. The final pro
 distinct representation of both vectors in terms of the independent basis expressed by the tensor.
 
 \subsection{Operation on the outer product}
-The most powerful interpretation of the product is achieved by observing that it is
-a linear operation on pairwise products of inputs.
+The most powerful interpretation arises from the observation that the bilinear product is
+a linear operation on pair-wise products of inputs.
 This interpretation is essential for understanding the expressive
-power of the operation as it gives rise to an obvious XOR-like behaviour.
+power of the operation as it gives rise to an obvious exclusive-or behaviour.
 A way to approach this interpretation arises from a method of implementing the bilinear 
-product in terms of straightforward matrix operations.
+product in terms of simple matrix operations.
 
 To discuss
-this we need to introduce the \emph{matricisation} of a tensor. Intuitively this
-operation is a way of \emph{unfolding} or \emph{flattening} a tensor into a matrix,
+this we need to introduce the \emph{matricisation} of a tensor. This
+operation is a way of \emph{unfolding} or \emph{flattening} a tensor into a large matrix,
 preserving its elements. Specifically we define the mode-\(n\)
 matricisation of a tensor as an operation which takes all mode-\(n\) fibres
-of the tensor and places them as columns of a matrix. We denote an mode-\(n\)
+of the tensor and places them as columns of a matrix. We denote the mode-\(n\)
 matricisation of a tensor \(\tensor{W}\) as \(\matr_n(\tensor{W})\). While the operation is
-straightforward, describing the exact permutation of the indices is awkard -- 
+straightforward, describing the exact permutation of the indices is awkward -- 
 for the general case see
 \autocite{Kolda2009}. 
 
-As an example consider the three-way tensor \(\tensor{X} \in \mathbb{R}^{2 \times 3 \times 4}\)
+It is easiest to show with an example. 
+Consider the three-way tensor \(\tensor{X} \in \mathbb{R}^{2 \times 3 \times 4}\)
 with slices
 \begin{align} \label{eq:slicies}
 	&\mat{X}_{1 \midbullet \midbullet} = \begin{bmatrix}
@@ -350,7 +347,7 @@ with slices
 	\end{bmatrix}.
 \end{align} To construct \(\matr_2(\tensor{X})\) we fix the first and third indices and place the
 resulting threads as columns of a new matrix. Fixing the first index corresponds to choosing one of
-the slices presented above while fixing the third amounts to choosing a column of the slice.
+these slices while fixing the third amounts to choosing a column of the slice.
 The result is:
 \begin{equation}\label{eq:matricisedeg}
 	\matr_2(\tensor{X}) = \begin{bmatrix}
@@ -360,20 +357,19 @@ The result is:
 	\end{bmatrix}.
 \end{equation}
 
-Although this captures and generalises the vectorisation operator often
-encountered in linear algebra, we retain the classical \(\vect\) operator for clarity.
+We also require the related \(\vect\) operator from linear algebra.
 This flattens a matrix into a vector by stacking its columns. For some matrix \(\mat{A}\) with
 \(n\) columns:
 \begin{equation}\label{eq:vec}
 	\vect(\mat{A}) = \begin{bmatrix}
-		\tran{\vec{A}_{\midbullet 1}} &
-		\tran{\vec{A}_{\midbullet 2}} &
-		\ldots &
-		\tran{\vec{A}_{\midbullet n}}
-	\end{bmatrix}^\mathsf{T}.
+		{\vec{A}_{\midbullet 1}} \\
+		{\vec{A}_{\midbullet 2}} \\
+		\vdots \\
+		{\vec{A}_{\midbullet n}}
+	\end{bmatrix}.%^\mathsf{T}.
 \end{equation}
 
-Note that a 
+A 
 mode-2 matricisation of a
 three-way tensor \(\tensor{W} \in \mathbb{R}^{n_1\times n_2\times n_3}\) must have shape
 \(n_2 \times n_1n_3\). The following lemma helps us describe the resulting matrix.
@@ -391,20 +387,20 @@ at \(j\):
 By the above definition of the vectorisation operator, each index \((i, k)\) in some matrix
 \(\mat{U} \in \mathbb{R}^{n_1\times n_3}\) maps to element \(i + (k-1)n_1\) in
 \(\vect(\mat{U})\). By the definition of the mode-2 matricisation we would expect to
-find tensor element \(W_{ijk}\) at index \((j, i + (k-1)n_3)\). Hence if we fix \(j\), we have
+find tensor element \(W_{ijk}\) at index \((j, i + (k-1)n_1)\). Hence if we fix \(j\), we have
 precisely the vectorisation of the \(j\)-th slice of the tensor.
 
-The indices into \(\matr_2(\tensor{W})\) can be though of as arising from the following construction.
+The indices into \(\matr_2(\tensor{W})\) arise from the following construction.
 First fix all indices to 1. Construct a column by sweeping the second index, \(j\),
-through its full range. Then increment the first index \(i\) and repeat the procedure, placing
-the generated columns with index \(i\). Only when \(i\) has swept through its full range
+through its full range. Then increment the first index \(i\) and repeat the procedure, appending
+the generated columns to a matrix as we go. Only when \(i\) has covered its full range
 increment the final index \(k\) and repeat the procedure. The generated columns should then be
 at positions \(i + (k-1)n_1\).
 \end{proof}
 
 To understand the lemma it helps to consider an example. Using the \(2 \times 3 \times 4\)
 tensor \(\tensor{X}\) defined
-in equation~\eqref{eq:slicies}, fixing the second index to \(2\) gives a \(4 \times 2\) 
+in eq.~\eqref{eq:slicies}, fixing the second index to \(2\) gives a \(4 \times 2\) 
 transposed slice:
 \begin{equation}\label{eq:mode2slice}
 	\tran{\mat{X}_{\midbullet 2 \midbullet}} = \begin{bmatrix}
@@ -425,14 +421,14 @@ transposed slice:
 		t &
 		w
 	\end{bmatrix}^\mathsf{T}
-\end{equation} which is precisely row two in equation~\eqref{eq:matricisedeg}.
+\end{equation} which is precisely row two of eq.~\eqref{eq:matricisedeg}.
 
 These flattenings are important as they allow us to
 implement many operations involving tensors in terms of large matrix operations which can be efficiently
 parallelised. The next lemma describes how we use a flattened tensor to implement a bilinear product.
 
 \begin{lem}[Matricised product]\label{lem:outerprod}
-For a tensor \(\tensor{W}\) and vectors \(\vec{x}, \vec{y}\) as above,
+For a tensor \(\tensor{W}\) and vectors \(\vec{x}\), \(\vec{y}\) as above,
 we can describe the product \(\vec{z} = \tran{\vec{x}}\tensor{W}\vec{y}\) in terms of the
 mode-2 matricisation of \(\tensor{W}\) as 
 follows:
@@ -445,7 +441,7 @@ follows:
 \begin{proof}
 To
 prove this we can compare the expressions for a single element of the result.
-An element \(z_j\) from equation~\eqref{eq:bilinearouter}
+An element \(z_j\) from eq.~\eqref{eq:bilinearouter}
 is formed as the inner product of the \(j\)-th
 row of the flattened tensor and the vectorised outer product of the inputs. By 
 lemma~\ref{lem:matricise}:
@@ -502,53 +498,45 @@ either or both are \(0\) then their product must be zero. Following the same str
 of theorem~\ref{thm:xor}, for binary inputs we must have this conjunctive relationship.
 \end{proof}
 
-\subsubsection{Implications}
-%\paragraph{Higher level features}
-\begin{enumerate}
-\item
+\subsubsection{Implications of theorem~\ref{thm:xor}:}
+\paragraph{Higher level features.}
 This indicates that the bilinear tensor products operate implicitly on higher
 level features, constructed by combining both inputs. This indicates that it is capable of capturing
-complex relationships between both. This allows it
-to model a rich class of binary relations.
-
-%\paragraph{XOR}
-\item
+complex relationships between both.
+\paragraph{XOR.}
 The case where both inputs are the same, \(\vec{z} = \tran{\vec{x}}\tensor{W}\vec{x}\),
 provides an interesting building block for feed-forward networks. A plain perceptron has been 
 long known to be incapable of learning the exclusive-or
 mapping \autocite{Minsky1969} -- a neural network to solve the problem requires either a hidden layer
-or an additional input feature (specifically the conjunction of the inputs) \autocite{Rumelhart1986}.
+or an additional input feature such as the conjunction of the inputs \autocite{Rumelhart1986}.
 By corollary~\ref{cor:and} this quadratic tensor form would capture the
 conjunctive feature and be capable of solving the exclusive or problem without hidden
 layers or hand-engineered features.
-
-%\paragraph{Apparent depth}
-\item
-This gives an indication of what we term the `apparent depth' of the
-tensor product. While it has long been known that neural networks with a single hidden layer and
+\paragraph{Apparent depth.}
+While it has long been known that neural networks with a single hidden layer and
 appropriate non-linearity (and therefore two weight matrices)
  are universal function approximators \autocite{Hornik1989}, recent results
-have suggested that the depth of the network is important in keeping the number of parameters
-bounded \autocite{Eldan2016, Telgarsky2016}. We claim that allowing tensor products has the effect
-of increasing the apparent depth of the network without adding additional hidden layers.
-\end{enumerate}
-
-The final claim requires some justification.
+have suggested that increased depth allow exponential increases in expressivity for a fixed number
+of parameters \autocite{Eldan2016, Telgarsky2016}. We claim that allowing tensor products has the effect
+of allowing similar increases without additional hidden layers.
+%\end{description}
+\paragraph{}
+The final claim requires justification.
 Eldan and Shamir show that for a
-particular class of radial basis-like functions -- which depend only on the squared norm of the 
+particular class of radial basis-like functions which depend only on the squared norm of the 
 input
 \footnote{Precisely, functions \(f : \mathbb{R}^n \mapsto \mathbb{R}\) such that
 \(f(\vec{x}) = f(\vec{y})\) implies that \(||\vec{x}||^2 = ||\vec{y}||^2\). Eldan and Shamir
 deal specifically with cases where the norm is the Euclidean norm (as is the case for the
 common squared-exponential kernel). They also
 require some additional constraints on the boundedness and support of the function, see
-\autocite{Eldan2016} theorem 1, for the precise construction.} --
+\autocite{Eldan2016} theorem 1, for the precise construction.}
 there exist networks with two hidden layers and a number of nodes polynomial in the input dimension
 which can perfectly approximate the function. They then show that a shallower network with a single
 hidden layer can only perfectly approximate the function with a number of nodes exponential in the
 input dimension \autocite{Eldan2016}. This is a very recent result (published in COLT 2016), which
 is remarkable as it proves an impossibility: there is a realistic class of functions which it is
-impossible to approximate accurately with a two layer network with polynomial size. However,
+impossible to approximate accurately with a two layer network with reasonably bounded size. However,
 this restriction can be subverted if we allow tensor semantics in the first layer of the network.
 
 To show this, we first require the following lemma.
@@ -566,8 +554,8 @@ Recalling lemma~\ref{lem:outerprod},
 \(\vec{x} \in \mathbb{R}^d\) then \(\tensor{W} \in \mathbb{R}^{d \times 1 \times d}\) as we only
 require a single output. The matricisation is then a \(1 \times d^2\) row vector and we simply need
 to set its elements zero apart from those with indices of the form \(1 + id\) for 
-\(i \in \{1, \ldots, d\}\). The matrix product will then simply pick out the diagonal elements and
-sum them, computing the squared norm as required.
+\(i \in \{1, \ldots, d\}\). The matrix product will then simply pick out the elements formerly
+on the diagonal and sum them as required.
 \end{proof}
 
 \begin{thm}[Exponential expressivity]
@@ -576,62 +564,67 @@ including a single tensor layer with a number of nodes polynomial in the size of
 require an exponential number of nodes to be approximated by a standard feed-forward layer.
 \end{thm}
 \begin{proof}
-We make use of Eldan and Shamir's proof \autocite{Eldan2016}. This is highly technical so we only
-provide a constructive outline here, which shows where we need to fit in. The proof in
-\autocite{Eldan2016} shows that for a given class of radial basis-like functions a two-layer
-feed-forward network requires exponential width to be able to approximate below a certain error.
-
-They then construct a three-layer network in the following manner:
+We make use of Eldan and Shamir's proof \autocite{Eldan2016}. The proof is highly technical so we 
+only describe the alterations required to allow a tensor layer.
+They construct a three-layer network in the following manner:
 for an input \(\vec{x}\), the first two layers learn to approximate the map 
-\(\vec{x}\mapsto ||x||^2_2 = \sum_i x_i^2\) while the final layer learns a univariate function on the
-squared norm, it is then proved that this required that each layer have polynomial width.
+\(\vec{x}\mapsto ||\vec{x}||^2_2 = \sum_i x_i^2\), the final layer learns a univariate function on the
+squared norm. Finally, it is show this can be done with layers of polynomial width in the input
+dimension.
 
 Using lemma~\ref{lem:sqnorm}, we can compute the squared norm exactly
 with a single layer. We can therefore construct a network in
 the same fashion as Eldan and Shamir, replacing the first two layers with a single tensor layer. 
 
 This plugs directly into the proof of lemma 10 in \autocite[18--19]{Eldan2016}, simply noting that
-we must duplicate the tensor layer a polynomial number of times. At most we will need the same number of
+we may duplicate the tensor layer a polynomial number of times -- at most we will need the same number of
 nodes in the final hidden layer of Eldan and Shamir's three layer network.
 \end{proof}
 
-This is a remarkable result, as it shows the increase in expressive power gained by allowing
-tensor representations. We have shown a single tensor layer can do the work of two feed-forward
-layers. This provides a strong motivation to explore architectures incorporating these tensor
+We have shown a single tensor layer can do the work of two feed-forward
+layers which provides a strong motivation to explore architectures incorporating these tensor
 semantics.
 
 
 \section{Tensor Decompositions} % should be just CP?
 Bilinear products show great promise. Unfortunately
-such a tensor is often very large; an \(n \times n \times n\) would require \(\Theta(n^3)\) space
+such a tensor is often very large; an \(n \times n \times n\) tensor
+would require \(\Theta(n^3)\) space
 to store explicitly and a similar number of operations to use to compute a bilinear product. 
-This leads to the idea of a parameterised decomposition -- an ideal solution
+This leads to the idea of using a parameterised decomposition -- an ideal solution
 would be a method of representing the tensor with some way of specifying the complexity of the
 bilinear relationship and hence making explicit the relationship between the number of parameters
 required and the expressive power of the model. 
 
-We will investigate two methods of tensor decomposition with a view towards their use as a building
-block for neural networks. The outcomes we wish to evaluate are: the savings in storage, how
-convenient it is to specify the number of parameters, convenience and efficiency of implementation
-(in terms of matrix operations) and whether the gradients suggest any benefits or hindrances when
-learning by gradient descent. There is a significant amount of research into tensor decompositions,
-\autocite{Kolda2009} provides a thorough review. Here we consider some of the most general
-decompositions and families of decompositions without going into detail outside of where it is
-relevant to the above concerns.
+Here we outline and analyse the single most important decomposition. We note that
+three-way tensors are something of a special case in which many methods of tensor decomposition
+become very closely related. The CP-decomposition discussed here is in many ways the
+simplest method yet it retains some very appealing properties. It is also worth observing that
+many of the
+more complex decompositions were devised to solve the difficulty of finding a CP-decomposition
+for a given tensor \autocite{Kolda2009, Hackbusch2009}. This issue does not affect us as we aim
+to learn the decomposed tensor in place to model an unknown relation. We are therefore well placed to
+prefer the simplicity of the CP. 
+
+The key competition is the Tensor-Train decomposition
+\autocite{Osedelets2011}, which has an elegant conceptual interpretation. Unfortunately in the three-way
+case it saves relatively little space and proves hard to train compared to the CP. A full discussion
+of the differences is deferred to appendix~\ref{A:tt} as the outcome is clear.
+We also point the interested reader to Kolda and
+Bader's excellent review of the history and applications of a wide range of tensor decompositions
+for a full background \autocite{Kolda2009}.
 
 \subsection{CANDECOMP/PARAFAC}
 This method of decomposing a tensor dates as far back as 1927 
-\autocite{Hitchcock1927, Hitchcock1928} and was rediscovered repeatedly across a range of
-communities over the next 50 years. \autocite{Kolda2009} First referred to as `polyadic
+\autocite{Hitchcock1927, Hitchcock1928} but has been rediscovered repeatedly in a range of
+contexts \autocite{Kolda2009}. First referred to as `polyadic
 form of a tensor' we refer to it as the CP-decomposition after two prominent publications in
 1970 referring to the technique as `canonical decomposition' (CANDECOMP) \autocite{Carroll1970}
  or `parallel factors' (PARAFAC). \autocite{Harshman1970}
  It is a fairly straightforward
 extension of a matrix rank decomposition to the more general case, representing a tensor as
-a sum of rank one tensors. This section contains a formal description of the three-way case
-as well as a note on computing bilinear products with the decomposed tensor.
-Some interesting results on the uniqueness of the decompositions can be found in \autocite{Kolda2009},
-but they are not relevant to the discussion here.
+a sum of rank one tensors. Some interesting results on the uniqueness of the decompositions can be found
+in \autocite{Kolda2009}, but they are not relevant to the discussion here.
 
 \subsubsection{Description}
 Given a three-way tensor \(\tensor{X} \in \mathbb{R}^{n_1 \times n_2 \times n_3}\) we wish to 
@@ -639,12 +632,12 @@ approximate it as
 \begin{equation}\label{eq:cp-statement}
 	\tensor{X} \approx \sum_{r=1}^{R} \vec{a}_r \otimes \vec{b}_r \otimes \vec{c}_r
 \end{equation}
- where \(R\) is the rank of the decomposition and \(\cdot \otimes \cdot\) denotes the tensor
+ where \(R\) is the \emph{rank} of the decomposition and \(\cdot \otimes \cdot\) denotes the tensor
 product. This product expands the dimensions; for the first two vectors it is the outer product
 \(\vec{a}\tran{\vec{b}}\) which generates a matrix consisting of the product of each pair of
 elements in \(\vec{a}\) and \(\vec{b}\). With three such products we proceed analogously, except
 now our structure must contain the product of each possible triple of elements. Hence we need
-three indices to address each entry, so it best described as a three-way tensor. Each individual
+three indices to address each entry, so it is a three-way tensor. Each individual
 element has the form
 \begin{equation}\label{eq:cp-element}
 	X_{ijk} = \sum_{r=1}^R a_{ri}b_{rj}c_{rk}.
@@ -683,13 +676,13 @@ We can compute the quantity inside the brackets for all \(r\) at once
 by \(\mat{A}\vec{x} \odot \mat{C}\vec{y}\), which results in a length \(R\) vector. 
 Equation~\eqref{eq:cpbilin-one} then notes that for each output \(j\) we take the \(j\)-th column
 of the \(R \times n_2\) factor matrix \(\mat{B}\) and perform a dot product with our earlier
-result. This is naturally expressed by the following matrix multiplication:
+result. This is naturally expressed by matrix multiplication:
 \begin{equation}
 	\vec{z} = \mat{B}^\mathsf{T} (\mat{A}\vec{x} \odot \mat{C}\vec{y}).
 \end{equation}
 \end{proof}
 
-This proposition casts the CP decomposition into a form that looks very similar to some of the
+This casts the CP decomposition into a form that looks very similar to some of the
 RNNs discussed in chapter~\ref{C:bg}. A key similarity is with the GRU -- the manner in which
 the reset gate is applied to the hidden states during the production of the candidate update
 \(\vec{z}_t\) could be almost be viewed as a non-linear version of the above.
@@ -698,15 +691,15 @@ To express the bilinear product above as a tensor network diagram  we have to in
 an auxiliary \(R\times R\times R\) tensor, denoted \(\tensor{I}_{R}\) which is defined as
 \begin{equation}\label{eq:tensoridentity}
 	I_{ijk} = \begin{cases}
-		1 & \mathrm{if} \; i=j=k \\
+		1 & \mathrm{if} \; i=j=k, \\
 		0 & \mathrm{otherwise}
 	\end{cases}
 \end{equation} in a manner analogous to the identity matrix. Taking a bilinear product with this
 tensor represents element-wise multiplication of the two vectors (see proposition~\ref{prop:identity}
 in the appendix). This is
 represented diagrammatically with the symbol
-\rotatebox[origin=c]{-180}{\(\oslash\)}.
-This is shown in 
+\rotatebox[origin=c]{-180}{\(\oslash\)},
+shown in 
 figure~\ref{fig:cpbilintnd}.
 
 \begin{figure}
@@ -737,24 +730,19 @@ consider a special case of the form
 \(
 	\tensor{W} = \sum_r^R \vec{a}_r \otimes \vec{e}_r \otimes \vec{c}_r,
 \) where \(\vec{e}_i\) are standard basis vectors with all elements zero and
- a one in position \(i\). Consider \(\vec{z} = \tran{\vec{x}}\tensor{W}\vec{y}\). Suppose,
-without loss of generality, that \(\vec{z} \in \mathbb{R}^R\). Then
+ a one in position \(i\). Consider \(\vec{z} = \tran{\vec{x}}\tensor{W}\vec{y}\). Then
 \begin{equation}\label{eq:xorfeatures}
-	z_r = \langle \vec{a}_r, \vec{x} \rangle \cdot \langle \vec{b}_r \vec{y}\rangle.
+	z_r = \langle \vec{a}_r, \vec{x} \rangle \cdot \langle \vec{c}_r \vec{y}\rangle.
 \end{equation} If we apply a sigmoid non-linearity, then \(\sigma(z_r) > 0.5\) implies \(z_r\) is
 positive so the dot products must have the same sign. \(\sigma(z_r) < 0.5\) implies \(z_r\) is 
 negative. If inserted in a neural network, the CP decomposition has the ability to compute the
-exclusive-or of features.
+exclusive-or of features extracted from the inputs.
 
 Bilinear products with the CP decomposition also retain the ability to express element-wise
-multiplication. The tensor it represents must be \textit{diagonal} with the
- diagonal elements having value one
- (see proposition~\ref{prop:identity} in the appendix for a proof). This means all entries
-\(ijk\) such that \(i = j = k\) must be one, all other entries zero. We denote such a tensor
-by \(\tensor{H} \in \mathbb{R}^{N \times N \times N}element-wise\).
-
-This is straightforward to model with a CP decomposition:
-\(\tensor{H} = [\mat{I}, \mat{I}, \mat{I}]_{CP}\) where \(\mat{I}\) is the 
+multiplication. Recalling the tensor \(\tensor{I} \in \mathbb{R}^{N \times N \times N}\) used
+earlier to represent element-wise multiplication,
+it is straightforward to model with a CP decomposition:
+\(\tensor{I} = [\mat{I}, \mat{I}, \mat{I}]_{CP}\) where \(\mat{I}\) is the 
 \(N\times N\) identity matrix. This is can be easily verified as the definition of a bilinear
 product with a CP-decomposed tensor includes an element-wise product so it suffices to ensure the
 factor matrices do not alter the inputs. The CP-decomposition reduces the required parameters
@@ -762,245 +750,84 @@ to \(3N^2\) as opposed to the original \(N^3\). This is a remarkable reduction, 
 an analogous diagonal \emph{matrix} is the worst case for the corresponding two-way 
 decomposition. 
 
-
-
 \section{Learning decompositions by gradient descent}
-We now present some experimental results, with two aims in mind. Firstly, we compare the above CP
-decomposition to another method for decomposing tensors: the \emph{tensor-train} (TT). This decomposition
-has some promising properties, however, it is ultimately out-performed by the CP decomposition so we defer
-description and theoretical discussion of it to to appendix~\ref{A:tt}.
-
-Secondly we wish to verify the expressive power of the decomposed tensor. We verify theoretical
-results by showing a tensor layer is capable of solving the exclusive-or problem without hidden units.
-We then apply it to a real world task to illustrate the benefits of the representation.
+We now present some experimental results 
+to verify the expressive power of the decomposed tensor. We justify theoretical
+results by showing a tensor layer is capable of solving the exclusive-or problem without hidden units
+and then apply it to a real world task to illustrate the benefits of the representation.
 
 \subsection{Gradients}
-It makes sense to check that the gradients of the parameters are well-behaved
-with respect to the output of the bilinear product. We break the gradient into three parts,
-one for each of the parameter matrices. As the end goal is the gradient of a vector with respect
-to a matrix it should naturally be represented by a three-way tensor. Many authors avoid this by
+Before training with gradient descent, we first need to derive the gradients. 
+We consider each parameter matrix individually.
+As the end goal is the gradient of a vector with respect
+to a matrix it should naturally be represented by a three-way tensor of partial derivatives.
+Many authors avoid this by
 vectorising the matrix \autocite{Magnus2007}, but for the purposes below it is sufficient to note
-that the gradients are highly structured, and we can write a simple form for each element.
+that the gradients are highly structured, and we can write a simple form for each partial derivative.
 
 Let \(\vec{z}\) be defined as above.
 The gradient of \(\vec{z}\) with respect to \(\mat{A}\) has entries of the form:
 \begin{align}
 	\frac{\partial z_j}{\partial A_{lm}} &= \sum_k^{n_3}B_{lj}C_{lk}x_my_k 
 		= B_{lj}x_m \cdot \langle\vec{C}_{l\midbullet}, \vec{y}\rangle.\\
-\intertext{The gradients with respect to \(\mat{C}\) have the same form:}
+\intertext{The gradients with respect to \(\mat{C}\) are very similar:}
 	\frac{\partial z_j}{\partial C_{lm}} &= y_m \cdot \sum_i^{n_1}A_{li}x_i 
 		= B_{lj}y_m \cdot \langle\vec{A}_{l\midbullet}, \vec{x}\rangle.\\
 \intertext{The gradient of the final parameter matrix \(\mat{B}\) has entries}
 	\frac{\partial z_j}{\partial B_{lm}} &= 
-		\sum_i^{n_1}\sum_k^{n_3}A_{li}C_{lk}x_iy_k. \label{eq:cpbilingrad}
+		\sum_i^{n_1}\sum_k^{n_3}A_{li}C_{lk}x_iy_k. 
+		= \langle\vec{A}_{l\midbullet}, \vec{x}\rangle \cdot 
+		\langle\vec{C}_{l\midbullet}, \vec{y}\rangle
+		\label{eq:cpbilingrad}
 \end{align}
-Curiously, the \(j\) and \(m\) indices do not appear in the right hand side of 
-eq.~\eqref{eq:cpbilingrad}. This appears to suggest that \(\mat{B}\) may learn a significantly
-redundant structure. However, during gradient descent this will be multiplied by the back-propagated
-loss, will alter the update.
+%Curiously, the \(j\) and \(m\) indices do not appear in the right hand side of 
+%eq.~\eqref{eq:cpbilingrad}. This appears to suggest that \(\mat{B}\) may learn a significantly
+%redundant structure. However, during gradient descent this will be multiplied by the gradient of the
+%loss which will be different for each coordinate.
 
-A final point to make about these gradients is the degree of multiplicative interactions present.
-This has been noted to occasionally cause slightly problematic dynamics during gradient descent. The
+A point to make about these gradients is the prevalence of multiplicative interactions.
+This has been noted to occasionally cause problematic dynamics during gradient descent. The
 simplest example is to consider
 gradient descent on the product of two variables: \(c = ab\). If \(a\) is very small and \(b\) is
 very large then the update applied to \(b\) will be very small and the update applied to \(a\) will
-be proportionally very large. Sutskever \autocite{Sutskever2013} uses this as motivation for using
-second-order information during optimisation of RNNs containing similar structures. We prefer to
-counsel patience -- after the above step, the gradients will become perfectly aligned to the scale
-of the parameters and subsequent updates should be better aligned.
+be proportionally very large. Sutskever uses this as motivation for using
+second-order information during optimisation of RNNs containing similar 
+structures \autocite{Sutskever2013}. We prefer to
+counsel patience -- after a single step, the gradients will become perfectly aligned to the scale
+of the parameters.
 
-
-\subsection{Random Bilinear Products}\label{sec:randbilin}
-\subsubsection{Goal}
-The aim for this experiment is to compare the two decompositions. There are two scenarios to
-investigate: learning a decomposed tensor when the tensor has the same structure as the data and
-learning a decomposed tensor when it can only approximate the underlying structure. 
-
-\subsubsection{Experiment Details}
-The first test uses the following procedure: generate a fixed random tensor \(\tensor{T}\)
-in the chosen decomposition with rank \(r_T\). Then generate a second tensor \(\tensor{W}\) 
-with rank \(r_W\). At each stage \(t\) generate a pair of random input vectors \(\vec{x}_t\) and
-\(\vec{y}_t\) and compute the bilinear products 
-\(\vec{z}_tt = \vec{x}_t^\mathsf{T}\tensor{T}\vec{y}_t\) and 
-\(\hat{\vec{z}}_t = \vec{x}_t^\mathsf{T}\tensor{W}\vec{y}_t\). Finally update the parameters of
-\(\tensor{W}\) to minimise the mean squared error between \(\vec{z}^t\) and \(\hat{\vec{z}}^t\)
-using stochastic gradient descent. In this way we hope to learn an approximation to 
-\(\tensor{T}\) in a similar setting to what might be found inside a neural network.
-
-We use a batch size of \(32\) and a fairly aggressive
- learning rate of \(0.1\).
-Training continues for \(250,000\) parameter updates, although most of the tensors have stopped
-making significant improvements by that time. In all tests the input vectors had elements drawn
-from a uniform distribution over the range \([-1,1]\) while unless otherwise noted the elements of
-the decomposition are drawn from a normal distribution with mean \(0\) and standard deviation
-\(0.1\). We use the same random seed for each trial, which explains the similar patterns in the
-TT-decompositions loss curves.
-
-\subsubsection{Results}
-
-\begin{figure}[ht]
-\centering
-\begin{subfigure}[t]{0.45\textwidth}
-	\includegraphics[width=\textwidth]{tensors/cp100cpapprox}
-	\caption{Attempting to approximate by directly learning factor matrices representing a 
-		CP-decomposition of various ranks}
-	\label{fig:cpcpapprox}
-\end{subfigure}
-\hfill
-\begin{subfigure}[t]{0.45\textwidth}
-	\includegraphics[width=\textwidth]{tensors/cp100ttapprox}
-	\caption{Attempting to approximate by directly learning a TT-decomposition of various ranks}
-	\label{fig:cpttapprox}
-\end{subfigure}
-\caption{Results for learning direct approximations of a CP-rank 100 tensor.}
- \label{fig:cpapprox}
-\end{figure}
-
-\begin{figure}[ht]
-\centering
-\begin{subfigure}[t]{0.45\textwidth}
-	\includegraphics[width=\textwidth]{tensors/tt16cpapprox}
-	\caption{Attempting to approximate by directly learning a 
-		CP-decomposition of various ranks}
-	\label{fig:ttcpapprox}
-\end{subfigure}
-\hfill
-\begin{subfigure}[t]{0.45\textwidth}
-	\includegraphics[width=\textwidth]{tensors/tt16ttapprox}
-	\caption{Attempting to approximate by directly learning a TT-decomposition of various ranks}
-	\label{fig:ttttapprox}
-\end{subfigure}
-\caption{Results for learning direct approximations of a tt-rank 16 tensor.}
-\label{fig:ttapprox}
-\end{figure}
-The results of attempting to approximate a (CP) rank 100 tensor with dimensions 
-\(100 \times 100 \times 100\) (which has 30,000 independent coefficients) 
-are shown in figure~\ref{fig:cpapprox}.
-The CP-decomposition is able to perfectly represent it when the rank is high enough,
-but usefully it is able to converge on reasonable approximations when it can not
-represent the full tensor.
-The TT-decomposition struggled, both in stability during training and final error.
-While we might expect the CP-decomposition to better represent another CP-decomposition due to
-the shared structure, it is remarkable how difficult the TT-decomposition was to
-train.
-In general we see that the quality of the approximation drops consistently with the
-number of parameters in the approximator, which is to be expected.
-
-The experiment was repeated with the target tensor expressed is a TT-decomposition with ranks
-\(r_1 = r_2 = 16\) (28,800 coefficients). Results can be seen in figure~\ref{fig:ttapprox}.
-As should be expected, the TT-decomposition performed better. In particular a TT-decomposition
-matching the rank of the target tensor reached a very low error extraordinarily quickly,
-performing much better than the CP-decomposition under the same conditions.
-
-These results imply both decompositions are potentially useful. The CP-decomposition learns
- reasonable approximations even when it does not necessarily reflect the
-structure of the underlying problem. The TT-decomposition struggles in this situation,
-but when the problem is structured more favourably it takes greater advantage.
-
-\subsection{Learning to multiply}
-\subsubsection{Goal}
-Learning bilinear functions provides a way to linearly approximate functions of two variables.
-A motivating example of such a function is element-wise multiplication, also known as the Hadamard
-product. In this section we investigate briefly the ability of the two decompositions to model
-such a product. We are particularly concerned with this as generalising this operation provides
-significant motivation for the current investigation.
-
-
-\subsubsection{Experiment Details}
-Learning exact element-wise products is a special case and can clearly be done with the 
-CP-decomposition without sacrificing parameter reduction. The question that remains is how closely
-a given decomposition can approximate an element-wise product, especially if there is some kind of
-helpful latent structure in the inputs to exploit. We test this by inducing a random structure
-on the inputs.
-
-This is performed identically to the experiments in section~\ref{sec:randbilin}
-except that that rather than generating a random tensor to provide the targets for training,
-we simply multiply element-wise the input vectors. We also simplify slightly by drawing the
-input vectors from \(\{0,1\}\) with equal probability
-(element-wise multiply in this sense corresponds to a bitwise AND). 
-Again the squared error loss is used, although
-a momentum term (with coefficient 0.9) was found to greatly assist learning.
-For a further test, the target
-output has a fixed permutation applied which removes the diagonal structure from the target but
-should still be a straightforward task. For this task we would
-expect that the CP-decomposition drastically outperforms the TT-decomposition.
-
-For a more realistic test we introduce a random structure to the input vectors. This is done by
-creating smaller vectors and expanding them to the appropriate size by copying the
-elements to random positions. The mapping of positions is fixed for the duration of a training
-run. We then experiment with varying the size of these smaller vectors and hence varying the
-degree of correlation while keeping the rank of the decomposition fixed. Here we have fewer
-preconceptions regarding the relative performance of the decompositions.
-
-\subsubsection{Results}
-The results figure~\ref{fig:multiply-ff}, affirm our
-expectations. The CP-decomposition is able to consistently reduce error as rank increases
- while the TT-decomposition appears to struggle. Permuting the indices did not make any
- difference to the relative performance, results are deferred to figure~\ref{fig:permute-multiply-ff}
-in the appendix.
-
-When there is significant structure to the inputs, the
-TT decomposition is notably worse. One hypothesis is that the CP decomposition simply represents
-higher rank tensors with the same number of parameters and that this is is what allows to better
-represent more complex structures. This is shown in the other results -- the rank 1 decompositions
-achieve similar performance regardless of the decomposition.
-
-\begin{figure}
-	\begin{subfigure}[t]{0.45\textwidth}
-		\includegraphics[width=\textwidth]{tensors/multiply-cp-mom}
-		\caption{Learning curves for CP-decompositions learning element-wise multiplication}
-	\end{subfigure}
-	\hfill
-	\begin{subfigure}[t]{0.45\textwidth}
-		\includegraphics[width=\textwidth]{tensors/multiply-tt-mom}
-		\caption{Learning curves for TT-decompositions learning element-wise multiplication}
-	\end{subfigure}
-	\caption{Training error for various rank decompositions on the element-wise multiplication
-	task.}
-	\label{fig:multiply-ff}
-\end{figure}
-
-\begin{figure}
-	\begin{subfigure}[t]{0.45\textwidth}
-		\includegraphics[width=\textwidth]{tensors/correlatecp50-mom}
-		\caption{Learning curves for a rank 50 CP-decomposition.}
-	\end{subfigure}
-	\hfill
-	\begin{subfigure}[t]{0.45\textwidth}
-		\includegraphics[width=\textwidth]{tensors/correlatett11-mom}
-		\caption{Learning curves for a rank 11 TT-decomposition.}
-	\end{subfigure}
-	\caption{Training error for two decompositions learning element-wise multiplication with
-	 varying amounts of structure.}
-	\label{fig:correlate-multiply}
-\end{figure}
 
 \subsection{XOR}
 \subsubsection{Goal}
 Theoretical results suggest that a single tensor layer should be able to solve the exclusive-or problem.
-This is known to be impossible with a single normal feed-forward layer, so if the tensor layer is successful
+This is known to be impossible with a single standard
+feed-forward layer, so if the tensor layer is successful
 in this task it would provide a useful demonstration of the difference in expressive power.
 
 \subsubsection{Experiment Details}
-True values were represented
-as \(1\) and false as \(0\). As there are only four data points, all were evaluated for each parameter update.
+Truth values are represented as binary ones and zeros. 
+As there are only four data points, all were evaluated for each parameter update.
 All models were trained using standard gradient descent with a learning rate of \(0.5\).
 
-Three models were evaluated, a perceptron, a multi-layer perceptron (MLP) and a single layer tensor. All
+Three models were evaluated: a perceptron (single layer feed-forward network), 
+a multi-layer perceptron (MLP) and a single layer tensor. All
 models used a sigmoid nonlinearity on the output, the MLP had 4 hidden units also with sigmoids and the 
 tensor layer used a rank \(1\) CP decomposition. Models
 were trained to minimise the cross-entropy, averaged across the data points with training continuing
-for \(1000\) epochs. Although not all MLPs had converged by this time, it was sufficient to see the difference
+for \(1000\) epochs. Although not all MLPs had converged by this time, it was sufficient to see the
+difference
 between the architectures. To show that the differences are fundamental we repeat the experiments 50
 times and observe consistent results.
 
 \subsubsection{Results}
-The baseline cross entropy is 0.6931, corresponding to outputting
-0.5 for all inputs (or guessing uniformly at random). As expected, the perceptron converges rapidly to this
-point. Both the MLP and the tensor are able to solve the task, although it is interesting to note that the
+The baseline cross entropy is \(-\log0.5 = 0.6931\), which corresponds to outputting
+0.5 for all inputs (or guessing uniformly at random). 
+As expected the simple perceptron
+converges rapidly to this point. Both the MLP and the tensor are able to solve the task,
+although it is interesting to note that the
 tensor does so far more rapidly and reliably than the MLP. This is not surprising in light of
-theorem~\ref{thm:xor} as this is precisely the kind of relationship we would expect the tensor product to
-represent naturally.
+corollary~\ref{cor:and} as this is precisely the kind of relationship we would expect the tensor
+product to represent naturally.
 
 \begin{figure}
 \centering
@@ -1013,13 +840,14 @@ minimum and maximum across all runs.}
 \subsubsection{Goal}
 In this section we apply the tensor decompositions to a less trivial task. In particular, we
 address the \textit{extrapolation} problem presented by Tenenbaum and 
-Freeman. \autocite{Tenenbaum2000} The focus in this task in on data that is naturally presented as a
-function of two factors, termed \textit{style} and \textit{content}. Tennenbaum and Freeman
-propose the use of bilinear models for such data as follows. The aim is to verify that we
-can learn a tensor decomposition of an unknown latent tensor with unknown rank.
+Freeman \autocite{Tenenbaum2000}. The focus in this task in on data that is naturally presented as a
+function of two factors, termed \emph{style} and \emph{content}. Tennenbaum and Freeman
+propose the use of bilinear models for such data to naturally capture 
+interactions in the joint space of the two
+factors. Our aim for reproducing a similar experiment is to verify that we
+can learn in place tensor decomposition that represents an unknown, complex relationship.
 
-\subsubsection{Experiment Details}
-\paragraph{Problem Formulation}
+\subsubsection{Problem Formulation}
 Let \(\vec{y}_{sc}\) be an observation vector with style \(s\) and content \(c\). It is modelled
 in bilinear form:
 \begin{equation}
@@ -1032,48 +860,51 @@ the model successfully generalises to style and content pairs not seen during tr
 
 We model the style and content parameter vectors as fixed length, dense vectors with a unique
 vector for each style label and each content label. The parameters in these vectors can be
-learnt by gradient descent at jointly with the tensor \(\tensor{W}\). This is equivalent
-to representing them in a one-of-N encoding (a vector with one value per possible label, all
-zero apart from the entry corresponding to the label in question) and then multiplying it by
-a matrix. We refer to such a matrix as an \textit{embedding matrix}. It is clear that if we
-were to attempt to learn the model without these embedding matrices and simply representing
-\(\vec{a}\) and \(\vec{b}\) with one-of-N encodings that the model would fail completely to
-generalise. A bilinear product with two such vectors would amount to selecting a single fibre
+learnt by gradient descent jointly with the tensor \(\tensor{W}\). This is equivalent
+to representing each style and content label individually
+in a one-of-N encoding (a vector with one value per possible label, all
+zero apart from the entry corresponding to the label in question) and multiplying it by
+a matrix. We refer to such a matrix as an \emph{embedding matrix} as it embeds a sparse encoding
+into a smaller, densely populated space. It is clear that if we
+were to attempt to learn the model without these embeddings it would fail completely to
+generalise. A bilinear product with two such one-of-\(n\) 
+vectors would amount to selecting a single fibre
 from the tensor, so the tensor could only ever hope to directly store the training data.
 Introducing a decomposition changes this by forcing the elements of the tensor to depend on
-one another.
+one another and incorporating an embedding matrix further forces the tensor to separately model
+different modes of interaction.
 
-
-\paragraph{Data}
+\subsubsection{Data}
 One dataset explored in \autocite{Tenenbaum2000} is typographical -- this provides a natural
 source of data defined by two factors: font and character. We refer to the character as the
 content and the font as the style. We collected a small dataset of five fonts and their
 italic/oblique variants for a total of ten styles. Variation between styles comes from stroke
-width, slant and the presence of absence of serifs. From each font the uppercase and lowercase
+width, slant and the presence or absence of serifs. From each font the uppercase and lowercase
 letters of the English alphabet were extracted, totalling 52 different content labels. Data was
 saved as 32 pixel by 32 pixel greyscale images. To represent images as vectors for the purposes
-of the above model they are flattened in scanline order: left to right and top to bottom.
+of the above model they are flattened in scanline order: left to right then top to bottom.
 
-\paragraph{Training Details}
+\subsubsection{Training Details}
 This is a very difficult task as we are expecting the model to produce pictures similar to ones
 that have never been seen in training. Further, we are trying to train a model with potentially
 thousands of free parameters based only on a few hundred examples. As this suggests, stopping
 the model from overfitting was the major challenge. The aim of the experiments was not
-necessarily to achieve state-of-the-art performance, but to quickly ensure that using a tensor
+necessarily to achieve state-of-the-art performance, but to ensure that using a tensor
 decomposition to model non-trivial interactions was a feasible goal.
 
-To begin we verify that a fairly small model is capable of representing the data. For this we
-use embeddings of size \(25\) and a rank \(25\) CP-decomposition. This model has 78,350
-parameters, while a model that contained the explicit \(25 \times 1024 \times 25\) tensor
-would have 641,550. We train the model using ADAM \autocite{Kingma2014}, a variant of
-stochastic gradient, descent to minimise the squared error:
+We use a model with
+embeddings of size \(25\) and a rank \(25\) CP-decomposition. This model has 78,350
+parameters, while a the explicit \(25 \times 1024 \times 25\) tensor
+would have 641,550, an eight fold difference in size. 
+We train the model using ADAM \autocite{Kingma2014}, a variant of
+stochastic gradient descent which dynamically rescales the step size, to minimise the squared error:
 \begin{align}
 	E = \sum_{i}^B ||\hat{\vec{y}}_{sc} - \vec{y}_{sc}||_2^2
-\end{align} where \(B\) is the number of elements in a batch (26 was used in the following) and
+\end{align} where \(B\) is the number of elements in a batch (we used 26) and
 \(\hat{\vec{y}}_{sc} = \vec{a}_s^\mathsf{T}\tensor{W}\vec{b}_c\) is the predicted image. Both
-the central tensor and the embedding vectors are updated at every update step. A small amount
-of \(l_2\) regularisation was found to help prevent overfitting, this involves adding a penalty
-term to the loss of the form \(\lambda||\mat{X}||_F^2 = \lambda\sum_i^m\sum_j^mX_{ij}^2\) for
+the central tensor and the embedding vectors are updated at every step. A small amount
+of \(l_2\) regularisation was found to help prevent overfitting. This involves adding a penalty
+term to the loss of the form \(\lambda||\mat{X}||_F^2 = \lambda\sum_i\sum_jX_{ij}^2\) for
 each matrix in the model.
 
 \subsubsection{Results}
@@ -1085,8 +916,7 @@ image with the intermediate vectors at each step.
 The start and end images are not perfect; the model was small and unable to capture the training
 data exactly. During experimentation larger models were found to fit the data very well, but 
 overfitted rapidly, which is why a smaller model was used for these results.
-
-Intermediate stages of the interpolation have no real meaning but they indicate that the model has
+Intermediate stages of the interpolation indicate that the model has
 not simply learned to recall individual pairs of labels. We see that as either the content or
 the style shifts from one to another, the elements of the source image which are not shared with
 the target fade out and are replaced.
@@ -1104,7 +934,7 @@ This suggests that the aim of inserting such tensor products into more complex n
 is feasible, reinforcing the promising theoretical results.
 
 
-\begin{figure}
+\begin{figure}[tp]
 	\begin{subfigure}[t]{\textwidth}
 	\begin{tabu} to \textwidth {XXXXXXXXXX}
 		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output0} &
@@ -1140,7 +970,7 @@ is feasible, reinforcing the promising theoretical results.
 	\caption{Learned style and content representations.}
 	\label{fig:sandc-interp}
 \end{figure}
-\begin{figure}
+\begin{figure}[tp]
 	\begin{subfigure}[t]{\textwidth}
 		\begin{tabu} to \textwidth {XXXXXXXXX}
 			\includegraphics[scale=1]{tensors/sandc/valid/real/Georgia-76} &
@@ -1168,13 +998,14 @@ is feasible, reinforcing the promising theoretical results.
 			\includegraphics[scale=1]{tensors/sandc/valid/synth/VeraMono-76} &
 			\includegraphics[scale=1]{tensors/sandc/valid/synth/VeraMono-89} 
 		\end{tabu}
-		\caption{Model output, having never seen these specific pairs during training.}
+		\caption{Model output, having never seen these items during training.}
 	\end{subfigure}
-\caption{Example of images generated from unseen style and content pairs, three letters from
+\caption[Style and Content generalisation]
+{Example of images generated from unseen style and content pairs, three letters from
 		 three different fonts.}
 \label{fig:sandc-valid}
 \end{figure}
-\begin{figure}
+\begin{figure}[hp]
 	\begin{center}
 	\begin{subfigure}[t]{0.45\textwidth}
 		\centering
@@ -1188,6 +1019,6 @@ is feasible, reinforcing the promising theoretical results.
 		\caption{Generated}
 	\end{subfigure}
 	\end{center}
-	\caption{A difficult example.}
+	\caption{A difficult example of style and content generalisation.}
 	\label{fig:sandc-fail}
-\end{figure}\
+\end{figure}

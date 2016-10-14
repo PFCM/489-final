@@ -3,19 +3,18 @@
 Recurrent Neural Networks (RNNs) are powerful machine learning models for learning mappings between
 pairs of sequences. Such tasks are typically highly challenging and include language modelling,
 machine translation, speech recognition and audio classification. They have achieved remarkable
-success even at immense scale \autocite{Wu2016a}, but the most successful architectures are
-opaque, poorly understood and seemingly redundant while simple clear models tend to have serious
-issues learning complex sequence asks \autocite{Bengio1994}. Understanding how RNNs are able to
+success at immense scale \autocite{Wu2016a}, but the most successful architectures are
+opaque and poorly understood while simple alternatives tend to have serious
+issues \autocite{Bengio1994}. Understanding how RNNs are able to
 solve complex tasks and designing new, simpler architectures that are well-understood from the
-outset is therefore of high importance.
+outset is an important goal.
 
-RNNs make computations at each time step of the input sequence based on the current input value and
-a fixed size vector of hidden states. At each step a new state is produced and passed forward. This
-allows the network to model complicated temporal dynamics. 
+RNNs make computations at each step of the input sequence based on the current input value and
+a fixed size vector of hidden states. At each step a new state is produced and passed forward allowing
+the network to model complex temporal dynamics. 
 The most successful architectures have two key components to this computation:
 additive state updates and multiplicative gating. The former allows easy integration of new information
-at each time step while the latter provides the ability to selectively ignore elements of the
-state or input. 
+at each time step while the latter provides the ability to selectively ignore irrelevancies. 
 
 Multiplicative gating involves computing element-wise products of vectors. We can
 generalise this as computing a product involving a three-way tensor of weights, termed
@@ -30,18 +29,18 @@ The downside of these tensor products is that using them explicitly requires sto
 can be very large. We therefore look to the multi-linear algebra literature to investigate methods of
 tensor decomposition. Finding a useful decomposition would allow us to incorporate this highly expressive
 tensor product in a neural network with a feasible number of parameters. We find that the simplest
-decomposition, CANDECOMP/PARAFAC \autocite{Carroll1970, Harshman1970}, fullfils our criteria
+decomposition, CANDECOMP/PARAFAC \autocite{Carroll1970, Harshman1970}, fulfils our criteria
 both theoretically and experimentally.
 
-Equipped with this tensor decomposition we now propose two new classes of RNNs: the Generalised
+Equipped with this tensor decomposition we propose two new classes of RNNs: the Generalised
 Multiplicative RNN (GMR) and the Tensor Gate Unit (TGU).
 The GMR is a very simple way to incorporate a tensor into a neural network and generalises a number of
 recently proposed architectures \autocite{Martens2011a, Wu2016}. The TGU includes an
 additive state update and standard multiplicative gates in addition to the bilinear product. 
-The architecture is based on the observation that the gate is the most important part of the architecture
+This architecture is based on the observation that the gate is the most important part of the architecture
 and that if we ensure it is sufficiently expressive, we can remove a number of other dependencies. This
 results in a unique, clearly defined architecture with full expressive power and a minimum of extraneous
-elements.
+components.
 
 These architectures are then evaluated empirically. We consider standard synthetic tasks and achieve
 excellent results including successfully training a TGU to capture time dependencies up to 10,000 steps,

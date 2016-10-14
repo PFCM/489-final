@@ -13,13 +13,15 @@ construction.
 Neural networks typically require biases to be able to express a full range of transformations. We would
 expect a tensor layer to be no different. A common way to conceptualise the addition of a bias for a
 given layer is to incorporate it into the weight matrix by adding an additional row and inserting a
-corresponding input which has its value fixed to one. With a bilinear product gives more than
-just the addition of a bias vector. We use \(\tilde{\phantom{x}}\) to represent altering the inputs
+corresponding input which has its value fixed to one. 
+We use \(\tilde{\phantom{x}}\) to represent altering the inputs
 and weights in this way: \(\tilde{\vec{x}}\) is an input vector with an additional \(1\) appended
 and \(\tilde{\mat{U}}\) is a matrix with a corresponding additional row.
 
 Generalising this construction to a three-way tensor we have to take an \(n_1 \times n_2 \times n_3\)
-tensor to a \(n_1 + 1 \times n_2 \times n_3 +1\). For a three-way tensor \(\tensor{W}\),
+tensor to size \(n_1 + 1 \times n_2 \times n_3 +1\). If we then perform a bilinear product and separate
+back out the extra components, we find that as well as the expected bias vector we also have
+two bias matrices, one per input. For a three-way tensor \(\tensor{W}\),
 \begin{equation}\label{eq:tensorbias}
 	\tran{\tilde{\vec{x}}}\widetilde{\tensor{W}}\tilde{\vec{y}}
 	= \tran{\vec{x}}\tensor{W}\vec{y} + \mat{U}\vec{y} + \mat{V}\vec{x} + \vec{b}.
@@ -33,11 +35,12 @@ results in
 \begin{equation}
 	\tran{\tilde{\vec{x}}}\widetilde{\tensor{W}}\tilde{\vec{y}}
 	= \tran{\mat{B}}\left( (\mat{A}\vec{x} + \vec{b}_x) \odot (\mat{C}\vec{y} + \vec{b}_y)\right).
-\end{equation} This is quite different to equation~\eqref{eq:tensorbias}. If we wish to
+\end{equation} This is quite different to eq.~\eqref{eq:tensorbias}. If we wish to
 insert such a tensor product into a neural network we must choose whether to leave the biases in
 the decomposition or treat the bias matrices separately. The latter provides less control over the
 parameters, as there are now two matrices unaffected by the rank, but it might be helpful in that we
-could use a very low rank decomposition and still maintain a baseline behaviour.
+could use a very low rank decomposition and still maintain a baseline behaviour. Further, separating
+the matrices ensures the tensor product can at least behave in the same manner as a Vanilla RNN block.
 
 \subsection{Generalised Multiplicative RNN}\label{sec:gmrnn}
 The simplest architecture way to incorporate a decomposed tensor is to use it to generalise the
@@ -69,33 +72,33 @@ Where \(f(\cdot)\) is either a linear rectifier or the identity function.
 \section{Motivation}
 The GMR is an elegant generalisation of a number of fairly simple architectures. However, it will
 still suffer from vanishing gradients and correspondingly we do not expect it to be capable of
-learning long time dependencies. To solve this, we have proposed the TGU which incorporates several
-key ideas from LSTMs and GRUs as well as a bilinear product. This section deals with the less clear
-aspects of the TGU's design, showing the theoretical and conceptual underpinning.
+learning long time dependencies. To solve this, we incorporate several
+key ideas from the LSTM and the GRU. This section explains in detail the decisions taken and
+the motivation and analysis behind them.
 
 \subsection{Solving Vanishing Gradients}\label{sec:additive}
-The biggest issue with the GMR, and that style of RNNs in general is vanishing gradients.
+The biggest issue with the GMR and Vanilla-style RNNs in general is vanishing gradients.
 A simple approach to avoid this
- is to have the network compute a candidate vector of hidden states
-\(\vec{z}_t\) and compute new hidden states as
+ is to have the network compute a candidate state update
+\(\vec{z}_t\) and obtain new hidden states as
 \begin{equation}\label{eq:additiveupdate}
-	\vec{h}_k = \vec{h}_{k-1} + \vec{z}_k.
-\end{equation}
+	\vec{h}_k = \vec{h}_{k-1} + \vec{z}_k
+\end{equation} rather than computing the new state directly.
 
-Recalling equation~\eqref{eq:bptt-v}, the problematic term was \(\nabla_{\vec{h_{k-1}}}\vec{h}_k\),
+Recalling eq.~\eqref{eq:bptt-v}, the problematic term was \(\nabla_{\vec{h_{k-1}}}\vec{h}_k\),
 the gradient of a hidden state with respect to its immediate precursor. If the state is computed by
-equation~\eqref{eq:additiveupdate}:
-\begin{equation}
+eq.~\eqref{eq:additiveupdate}:
+\begin{equation}\label{eq:additivegrad}
 	\nabla_{\vec{h}_{k-1}}\vec{h}_k = \mat{I} + \nabla_{\vec{h}_{k-1}}\vec{z}_k.
-\end{equation} Adding the identity matrix pushes the eigenvalues of the gradient up, which should go
+\end{equation} Adding the identity matrix adds one to the eigenvalues of the gradient, which should go
 a long way to avoiding vanishing.
 
-While the gradients may not vanish, they may still explode. Pascanu et al. show that a necessary
-condition for exploding gradients, when using the hyperbolic tangent activation, is that the largest
-eigenvalue of the recurrent weight matrix is greater than one \autocite{Pascanu2012}. With this
-additive update all we need is for the the entire
-\(\nabla_{\vec{h}_{k-1}}\vec{z}_ k\) to have at least one positive eigenvalue. This is highly likely,
-especially from a random initialisation.
+While the gradients may not vanish, they are likely to explode. Pascanu et al. show that a necessary
+condition for exploding gradients is that the largest
+eigenvalue of this gradient is greater than one \autocite{Pascanu2012}. For this
+additive update all we require for exploding gradients is then for
+\(\nabla_{\vec{h}_{k-1}}\vec{z}_ k\) to have at least one positive eigenvalue. This is highly likely
+ from random initialisation, so this architecture is going to be challenging to train.
 
 Additive connections give us a way to fight vanishing gradients, but we need to temper them somehow
 to avoid exploding gradients. Fortunately, LSTMs and GRUs already present a class of successful
@@ -121,7 +124,15 @@ as a \emph{forget} gate. This type performs best
  theoretical analysis.
 The gate on the GRU is slightly
 different and has a number of advantageous properties which lead to its eventual selection.
-We term this the \emph{convex} gate as it recursively computes convex sums.
+We term this the \emph{convex} gate as it recursively computes convex sums. 
+
+Both of these gates apply element-wise. Although as multiplicative structures we could generalise
+them with a tensor product, the element-wise nature is essential for keeping the gradients intact.
+Applying a gate will replace the identity matrix in eq.~\ref{eq:additivegrad}
+with some other matrix. If the gating is done element-wise, then the new matrix will remain diagonal,
+meaning it will still act purely additively on the eigenvalues of the gradient. If we allow a tensor
+product, then we could be adding any arbitrary matrix into the gradient, which will exactly re-introduce
+the pathologies we seek to avoid.
 
 Denote by \(p_t\) the gate signal at time \(t\) (which is a
 function of both the input and the current state and bounded in \([0, 1]\)). We also use
@@ -198,19 +209,20 @@ is the product of all gate values from \(t\) down to 1, the range of possible sh
 
 
 \paragraph{Remembering requires cooperation.}
-Consider the case where the network needs to remember an input at one time step and forget all future
+Consider the case where the network needs to remember an input at one time step and ignore all future
 inputs. Achieving this with the forget gate can be done in two
 ways. Firstly, the gate values can be clamped to one and the
 candidates to zero. Clamping the gates to one produces an almost rectangular window; the state will be an
 evenly weighted sum of all candidates from the point the gate switches on. All subsequent candidates
 therefore must be zero.
-The second method of remembering a single candidate state is by reproducing the same candidate
-state at each time and setting the forget gate to zero.
+A second method of remembering a single candidate state is by reproducing the same candidate
+state at each time and setting the forget gate always to zero.
 
 Both of these require a significant degree of co-operation between the gate and the mechanism that
 produces candidate activations. Further, the production of candidate activations has to
 depend on the previous state. The LSTM achieves this with additional gates controlling the candidate
-production. We hypothesise that this hinders learning as these components have to concurrently learn
+production (which correspond to using a very unusual non-linear tensor decomposition). 
+We hypothesise that this hinders learning as these components have to concurrently learn
 complementary behaviours.
 
 %\begin{figure}
@@ -242,7 +254,7 @@ state at each time \(t\) with respect to the gate signal at an earlier time \(i 
 			\frac{\partial h_i}{\partial p_i} = 
 		\left(\prod_{k=i+1}^t p_k\right)
 			h_{i-1} \\
-\end{align} by equation~\ref{eq:forgetgate}.
+\end{align} by eq.~\ref{eq:forgetgate}.
 This makes it clear that the gating does not just happen during the forward pass. 
 Repeating the process with respect to the candidate activations, it is clear that
 the same argument applies.
@@ -255,7 +267,7 @@ the same argument applies.
 exhibit a strong decay, the network will be forced to update primarily on
 local information so it will struggle to learn long time dependencies.
 A common practical solution is to initialise the bias of the unit computing the forget to a high
-positive value so the gates tend to be higher \autocite{Jozefowicz2015}.
+positive value so the gates start higher \autocite{Jozefowicz2015}.
 
 \subsubsection{Convex Gate}
 We now repeat the analysis with the convex gate. Let \(p_0 = 0\) and \(h_0 = z_0\) be some initial
@@ -269,8 +281,8 @@ state.
 \begin{equation}
 	h_t = \sum_{i=0}^t \left(\prod_{j=i+1}^t p_j\right) (1 - p_i) z_i
 \end{equation} ensuring we define \(\prod_{j=i+1}^tp_j = 1\) if \(i = t\).
-This is very close to what we had above, but the extra \(1-p_i\) in the
-coefficients has significant impact. Firstly, we can prove the following statement which shows
+This is very close to what we had above, but the \(1-p_i\) term in the
+coefficients has a significant impact. Firstly, we can prove the following statement which shows
 that the sum over states is a convex sum.
 
 \begin{prop} [Conservation of attention]
@@ -286,14 +298,15 @@ If we expand the brackets, we can produce a telescoping sum. To ensure it telesc
 appropriately, we first pull the first and last terms out of the summation.
 \begin{align}
     &\sum_{i=0}^t \left(\prod_{j=i+1}^t p_j\right) (1 - p_i) \\
-    &= \prod_{j=1}^tp_j(1-p_0) + (1-p_t) + \sum_{i=1}^{t-1} \left(\prod_{j=i+1}^t p_j\right) (1 - p_i) \\
-    &= \prod_{j=1}^tp_j(1-p_0) + (1-p_t) + \sum_{i=1}^{t-1} \left(\prod_{j=i+1}^t p_j\right) - \left(\prod_{j=i}^t p_j\right) \\
+    &= \prod_{j=1}^tp_j(1-p_0) + (1-p_t) + \sum_{i=1}^{t-1} \left(\prod_{k=i+1}^t p_k\right) (1 - p_i) \\
+    &= \prod_{j=1}^tp_j(1-p_0) + (1-p_t) + \sum_{i=1}^{t-1} \left(\prod_{k=i+1}^t p_k\right) - \left(\prod_{l=i}^t p_l\right) \\
     &= \prod_{j=1}^tp_j(1-p_0) + (1-p_t) - \prod_{k=1}^t p_k + p_t \\
     &= \prod_{j=1}^tp_j - \prod_{k=1}^tp_k + 1 - p_0 + p_t - p_t = 1
 \end{align}
 \end{proof}
 This means that the scale of the states
-depends only on the scale of the candidate activations. We can make the following remarks about this form
+depends only on the scale of the candidate activations. Intuitively this should help address the danger
+of exploding inherent in the additive update. We can make the following remarks about this form
 of gate.
 
 \begin{figure}[t]
@@ -303,7 +316,7 @@ of gate.
 	\includegraphics[width=\textwidth]{newarchs/cvexexp}
 	\caption{Coefficients of \(z_t\) resulting from a fixed, high value of all \(p_t\)
 	under the convex gate scheme.}
-\end{subfigure}~
+\end{subfigure}\hfill
 \begin{subfigure}[t]{0.45\textwidth}
 	\centering
 	\includegraphics[width=\textwidth]{newarchs/cvexspike}
@@ -311,7 +324,7 @@ of gate.
 	500 set to 1.}
 \end{subfigure}
 \caption[Convex gate shapes]{Different window shapes produced by the convex gate.
- A simple adjustment to the formula
+ A simple adjustment to the formula allows
 a much wider range of shapes.}
 \label{fig:cvexgates}
 \end{figure}
@@ -364,24 +377,24 @@ backward pass.
 Equation~\eqref{eq:cvexgrad} is interesting -- the gradient of the state with respect to the gate value
 depends not just on the preceding state but on the difference between the state and the proposed
 update. This suggests that during training what drives the updates is the possible changes that could be
-made to the state, rather than just the state values itself. Meanwhile, equation~\eqref{eq:cvexstategrad}
-shows that the proposition~\ref{prop:convexsum} also applies to the gradients. 
-This suggests that as long as the scale of the candidate activations are under control
+made to the state, rather than just the state values itself. Meanwhile, eq.~\eqref{eq:cvexstategrad}
+shows that proposition~\ref{prop:convexsum} also applies to the gradients. 
+This suggests that as long as the scale of the candidate updates is under control
 there will be no problems with exploding gradients.
 
 The downside of the system is that it may still struggle to learn long time dependencies early.
-It would be straightforward to initialise the gate so that it has a mean activation of \(0.5\),
+It would be straightforward to initialise the gate so that it has a mean value of \(0.5\),
 but this would correspond to an exponential decay of information. Unlike the forget gate simply
-increasing the mean activation (for example by initialising the bias to a high positive value)
+increasing the mean value (for example by initialising the bias to a high positive value)
 will not correspond to a flatter window.
 
 
 \subsubsection{Conclusions}
 The convex gate by itself seems more capable than the forget gate as it is able to represent more
 useful distributions over past candidate states while successfully employing a forget gate requires a more
-complex method of producing candidate states. Further, the convex gate avoids the issue of requiring
+complex method of producing candidate states. The convex gate avoids the issue of requiring
 two components to learn complementary behaviours by allowing a single component to carry out the job.
-We find this appealing as it enables simpler and more modular architectures.
+This is appealing as it enables simpler and more modular architectures.
 
 
 \subsection{Computing the gate}
@@ -389,7 +402,8 @@ In order to decide whether incoming information should
 overwrite the current state values, the gate will need to see the current values and the new information.
 The binary nature of this task suggests
 the use of a tensor unit as discussed in chapter~\ref{C:tens}. Secondly if we want the full utility of
-the convex gate, it seems logical to imbue it with full expressive power -- the bilinear tensor is a
+the convex gate, the mechanism to compute its values will have to be capable of modelling complex interactions. 
+The bilinear tensor product is therefore
 perfect fit.
 
 It is also necessary to choose a non-linearity. We expect the gate to function mostly as a switch,
@@ -397,7 +411,8 @@ accepting or rejecting new information. The
 typical approach is to ensure this smoothly with a sigmoid. Although sigmoids have undesirable
 properties when used in feed-forward networks \autocite{Glorot2010} they remain the standard choice
 when this kind of gating is desired \autocite{VandenOord2016, Oord2016} and we find no reason to
-deviate from this.
+deviate from this, especially as keeping the gate activation bounded in \([0,1]\) will ensure the
+gradients will not explode due to the additive connection.
 
 Using a tensor in this fashion provides an interesting possibility: the ability to write to the memory
 associatively. The gate is constantly computing weighted similarities between

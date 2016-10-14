@@ -9,13 +9,20 @@ this is a significant hindrance to using the models in practice. The second is e
 matter how appealing and conceptually grounded the architectures are, they are not useful if they do
 not perform in the real world.
 
+Initialisation of the various architectures was not explored in great detail. For most networks we
+find initialising the square matrices to be orthonormal and sampling others from a small uniform
+distribution is a sufficiently robust procedure. A brief explanation of how random orthonormal
+matrices are sampled, as well as a visual comparison of some procedures can be found in
+appendix~\ref{A:init}.
+
 \section{Synthetic Tasks}
 The synthetic tasks are designed to be highly difficult. Most synthetic tasks for RNNs explored in
 the literature have focused on long time dependencies. While these provide a useful measure of the
 stability of a model's memory, we also wish to determine how capable a model is at using its memory to
 read and write arbitrary patterns. To do this we have had to propose a new synthetic task which identifies
 key weaknesses in the LSTM and GRU which are resolved by the TGU. As the tasks in this section are
-highly pathological, we do not report results for Vanilla RNNs or the GMR as they fail on all of tasks.
+highly pathological, we do not report results for Vanilla RNNs or the GMR as they are unable to resolve
+the time dependencies required.
 
 \subsection{Addition}\label{sec:addition}
 \subsubsection{Task}
@@ -29,7 +36,7 @@ distribution over the range \([0,1]\) while the other is zero except for two loc
 The location of the first one is always chosen to be earlier than \(T/2\) while the second is after.
 The goal is to output at the last time step the sum of the two random values that were presented when the
 second input was one. Pseudocode for an algorithm to generate sequences is presented in the appendix,
-section~\ref{sec:additionpseudo} and figure~\ref{fig:additionpics} shows an example.
+section~\ref{sec:additionpseudo} while figure~\ref{fig:additionpics} shows an example.
 This task becomes harder as the \(T\) increases because the length of time the numbers have to
 be remembered for increases.
 
@@ -46,20 +53,20 @@ for \(1800\) updates. While some authors have found they require significantly m
 with certain architectures (up to 10,000,000 in the case of \autocite{Le2015}) we found most successful
 architectures converge within 500 on most sequences.
 
-While previously reported results for this task stop at \(T=750\), the most successful architectures still
-converge rapidly to a solution at this stage. In order to more fully test the limits we increase
+While previously reported results for this task stop at \(T=750\), our most successful architectures still
+converge rapidly to a solution at this length. In order to more fully test the limits we increase
 \(T\) to 1,000, 5,000 and 10,000. The same parameters were used but only the architectures tested that
 were able to solve the task at \(T=750\) were applied to these much more challenging tasks. In order
 to reliably find solutions at length 10,000 we had to increase the number of hidden units to \(32\), the
 rank of the tensor decomposition was increased proportionally to \(16\).
 
-The models tested were the LSTM, GRU, IRNN \autocite{Le2015} and our TGU. We use a standard LSTM without
-peephole connections. For the TGU we separate the bias matrices and use a layer of ReLUs for the candidate
-production. All models use a linear output layer to reduce the hidden states back to a scalar.
+The models tested were the LSTM, GRU, IRNN \autocite{Le2015} and our TGU. 
+For the TGU we separate the bias matrices and use a layer of ReLUs for the candidate
+production. All models use a linear output layer to reduce the hidden states back to a scalar prediction.
 
 \subsubsection{Results}
-The baseline result for this task is a mean squared error of \(0.1767\) which corresponds to predicting
-\(1\) for every input. Many architectures are unable to perform significantly better than this.
+The baseline for this task is a mean squared error of \(0.1767\) which corresponds to predicting
+\(1\) for every input sequence.
 Figure~\ref{fig:addresults} shows that we were unable to find a solution with the IRNN or LSTM within
 the time allotted, while the GRU and TGU consistently did so very rapidly -- in less than 1,000
 iterations which is several orders of magnitude faster than previously published results 
@@ -67,11 +74,15 @@ iterations which is several orders of magnitude faster than previously published
 
 The figures also show that this task can be somewhat frustrating. Due to the online nature, the loss
 curves are very noisy, so it is almost impossible to determine whether a model is making progress.
-Further, in accordance with a number of others' results \autocite{Le2015, Arjovsky2015} many
+In accordance with a number of others' results \autocite{Le2015, Arjovsky2015} many
 architectures will sit on or around the baseline showing no signs of progress for thousands of
 training steps before suddenly and rapidly converging to a solution, such as
-the GRU on sequence length 1000 in figure~\ref{fig:addlong}.
+the GRU on sequence length 1000 in figure~\ref{fig:addlong}. 
+We have refrained from smoothing the loss curves to make clear this abrupt shift in behaviour when models begin
+to converge.
+
 \begin{figure}[ht]
+\centering
 \begin{subfigure}[t]{0.75\textwidth}
 \includegraphics[width=\textwidth]{exps/addition/sl750}
 \caption{Sequence length 750.}
@@ -94,29 +105,23 @@ mechanism, it is probable that this is a key factor in their success. As discuss
 chapter~\ref{C:arch} this convex gating mechanism is naturally capable of representing exactly the
 behaviour required to solve this task -- remembering precisely a small subset of inputs.
 
-We also
-found that the TGU performed much better on this task with a ReLU layer producing candidate updates,
-which is contrary to findings on several later tasks in which linear candidates were preferred.
+
+Although the convex gate is excellent at picking out individual time steps to remember, it still
+has the character of an exponential decay, especially from random initialisation. However, 
+we were unable to find a sequence too long for the TGU. 
+Results for the TGU and GRU on long sequences are shown in 
+figure~\ref{fig:addlong}. The GRU begins to beat the baseline on two of the
+tasks inside 2,000 updates. More remarkably, the TGU seems almost completely unaffected by the
+extreme length of the sequences still achieving a solution inside 1,000 steps.
+
+We found that the TGU performed much better on this task with a ReLU layer producing candidate updates,
+which is contrary to findings on several later tasks.
 A possible reason for this is that it is very easy for the ReLU layer to output exactly \(0\).
 If the candidate activation mechanism is able to learn to simply output zeros when the appropriate
 input is zero, then if the gate is able to stay constant the task is essentially solved -- there should
 be at least one hidden unit that will contain a value proportional to the correct answer. Therefore,
 we would expect all gated units with an additive state update to perform excellently on this task, those
 with a rectified state update only more so.
-
-These results reveal a key weakness in the LSTM. While others have shown 
-it is capable of solving the task eventually \autocite{Henaff2016}, it was unable to do so in a comparable
-number of training iterations.
-This adds weight to the hypothesis that the co-operation between components that the LSTM requires to succeed
-is tricky to learn by gradient descent and it is preferable to avoid it if possible.
-
-Although the convex gate is excellent at picking out individual time steps to remember, it still
-has the character of an exponential decay. However, 
-we were unable to find a sequence too long for the TGU. 
-Results for the TGU and GRU on long sequences are shown in 
-figure~\ref{fig:addlong}. The GRU begins to beat the baseline on most of the
- sequences inside 2,000 updates. What is remarkable is that the TGU seems almost completely unaffected by the
-extreme length of the sequences, still achieving a solution inside 1,000 steps.
 
 For the sequences with length 10,000 the expected time dependency (the number of steps between the
 two inputs the network has to remember) is 5,000. The network then has to preserve this value in its
@@ -129,28 +134,33 @@ at each layer.} In order to train it successfully we must back-propagate gradien
 is still more than 5 times the depth of the deepest feed-forward networks reported
 \autocite{Huang2016}.
 
+These results reveal a key weakness in the LSTM. While others have shown 
+it is capable of solving the task eventually \autocite{Henaff2016}, it was unable to do so in a comparable
+number of training steps.
+This adds weight to the hypothesis that the co-operation required between components in the LSTM 
+is challenging to learn by gradient descent.
 
 \subsection{Variable Binding}
 This task is designed to test the architectures' ability to store arbitrary patterns in memory and
-associate them with a label. We term this ``variable binding'' as to solve the task the network needs
+recall them in an organised manner. We term this ``variable binding'' as to solve the task the network needs
 to be capable of associating an arbitrary value with a specific label. This task is a natural
-sub-problem of many large scale problem domains to which RNNs have already been successfully applied.
+sub-task of many large scale problems to which RNNs have already been successfully applied.
 An example is translation -- in an end-to-end translation system, the network must perform tasks such
 as detecting subjects and objects of sentences, store them appropriately and reproduce them at an
 arbitrary time.
 
-Curiously, we could
-not find a satisfactory task in the literature which exercised this ability.
+Curiously, we could not find a satisfactory task in the literature which tested this ability.
 Close alternatives include
 the copy task in \autocite{Hochreiter1997} and the variants considered in \autocite{Graves2014}, but these
-are concerned with recalling the order in which symbols arrive. The ``variable assignment'' task
-used to evaluate the Associative LSTM \autocite{Danihelka2016} has a similar aim in mind but assesses recall
-of temporal patterns.
-
+are concerned with recalling the order in which symbols from a fixed vocabulary appear. 
+The ``variable assignment'' task
+used to evaluate the Associative LSTM \autocite{Danihelka2016} has a similar aim in mind but again
+assesses recall of temporal patterns which does not require learning the kind of delayed one-to-one
+mapping we want to investigate.
 
 \subsubsection{Task}
-We propose the following synthetic task to test the ability of the network to store and retrieve
-arbitrary patterns: inputs and targets are sequences of length \(T\). Inputs at each time step are
+We propose the following synthetic task to test the ability of the network to learn this sort of
+mapping: inputs and targets are sequences of length \(T\). Inputs at each time step are
 binary vectors of size \(D+N\). The first \(D\) elements of the input are the ``pattern bits'' while
 the remaining \(N\) are the ``label bits''. \(N\) different binary patterns are presented to the
 network at randomly chosen time steps in the first half of the sequence, the pattern bits are zero at
@@ -159,20 +169,20 @@ bit is then held until a randomly chosen time step where it is cleared.
 At this point, the network must output the corresponding pattern. Label bits are never reused. The target
 sequence to match consists of vectors of size \(D\), containing the appropriate pattern at the moment each
 of the label bits switches off and zeros elsewhere. Section~\ref{sec:vbinddata} in the appendix includes
-some examples of this.
+some examples of this
 while algorithm~\ref{alg:vbinddata} in the appendix demonstrates how to produce appropriate data.
 
 This task involves a number of interesting concepts. A correct solution will need to learn a
 transformation from input patterns to hidden states and then learn the inverse transform
-to produce the correct output. The requirement of invertibility suggests a strong reason
+to produce the correct output. The requirement of invertibility suggests a reason
 for the success of the TGU with linear candidate updates, as the correct output can be reconstructed
-by applying the inverse affine transformation. Storing and recalling multiple distinct items also 
+by applying the inverse lienar transformation, which may be easier to learn than the inverse of a
+highly non-linear transformation. Storing and recalling multiple distinct items also 
 requires the ability to be selective about updating the hidden state, which suggests gated architectures
 should perform well.
 
 \subsubsection{Experiment Setup}
-For this task we found the same hyper parameters to be the best for all models
-(that is to say, grid search was unable to find any with demonstrably better performance).
+For this task we found the same hyper parameters to be robust for all models.
 Models were trained with a batch size of \(32\) using ADAM with a base learning rate of \(0.01\).
 We ceased training after 5000 steps --  although some models were only just beginning to learn
 by this time, it is sufficient to see the difference in how easily they are able to arrive
@@ -183,10 +193,9 @@ sum of the cross entropy at each output at each time step.
 For all results reported we use eight bit patterns and test on sequences of length 100, 200 and 500
 with one, two and three patterns leading to nine different experiments.
 
-The baseline behaviour which all architectures achieved rapidly
-is to wait until any of the label bits turns off and output a pattern with mean 0.5. Guessing
-0.5 (or randomly with probability 0.5) achieves a cross entropy of \(-\log 0.5 = 0.69315\), so
-this will achieve a total loss on sequences with \(N\) eight bit patterns of \(-8N\log 0.5\).
+The baseline behaviour, which all architectures achieved rapidly,
+is to wait until any of the label bits turns off and output a pattern with mean 0.5. This
+achieves a total loss on sequences with \(N\) eight bit patterns of \(-8N\log 0.5\).
 Examples of a networks exhibiting this behaviour can be found in figure~\ref{fig:vbindfail}
 in the appendix.
 
@@ -197,10 +206,10 @@ performance.
 
 We set the number of hidden units to ten times the number patterns to remember for each architecture.
 This leads to considerable difference in the number of parameters, but this task is primarily
-concerned with the ability of an RNN to use its memory sensibly, so it is fairest to ensure they
-all have the same amount of memory. As the patterns are all eight bits, have ten hidden units
+concerned with the ability of an RNN to use its memory sensibly, so it is fair to ensure they
+all have the same quantity of memory. As the patterns are eight bits, having ten hidden units
 per pattern ensures it is possible for the networks to store the inputs directly and still have
-a couple of units to track the state of the label bits. As the patterns are binary, it should be
+some units to track the label bits. As the patterns are binary, it should be
 straightforward to learn a compressed representation, so these networks are very much overspecified.
 
 \subsubsection{Results}
@@ -214,6 +223,7 @@ consistently exploded. Therefore we only report IRNN results on
 the tasks with length 100. We show the median of five runs as there were occasional outliers.
 
 \begin{figure}[tbh]
+\centering
 \begin{subfigure}[t]{0.3\linewidth}
 	\includegraphics[width=\linewidth]{exps/vbind/plots/100x1}
 	\caption{Sequence length 100.}
@@ -234,6 +244,7 @@ task is 5.5452.}
 \end{figure}
 
 \begin{figure}[htb]
+\centering
 \begin{subfigure}[t]{0.3\linewidth}
 	\includegraphics[width=\linewidth]{exps/vbind/plots/100x2}
 	\caption{Sequence length 100.}
@@ -254,6 +265,7 @@ task is 11.0904.}
 \end{figure}
 
 \begin{figure}[htb]
+\centering
 \begin{subfigure}[t]{0.3\linewidth}
 	\includegraphics[width=\linewidth]{exps/vbind/plots/100x3}
 	\caption{Sequence length 100.}
@@ -282,8 +294,8 @@ task.
 Increasing the number of items to remember, even just to two, makes the
 task considerably harder. This highlights an issue with the manner
 in which RNNs interact with their memory -- they are forced to attend to it all
-at once. If we consider a TGU-style RNN in which the candidate state does not
-depend on the previous hidden states, it must learn a redundant mapping to embed
+at once. In a TGU where the candidate state does not
+depend on the previous hidden states this requires learning a redundant mapping to embed
 the input into the state-space. This is because it can not rely on the label
 bits to determine which of the two inputs it is processing (this would require
 access to the hidden states to determine which has switched recently). If we
@@ -305,21 +317,20 @@ When the number of patterns is increased to three all the architectures struggle
 With a sequence length of 100, there is some separation -- the TGU makes the most
 progress although the GRU and LSTM also begin to progress beyond the baseline.
 On the longer sequences, there is less of a clear result and when the sequence
-length is up to 500, no models were capable of surpassing the baseline even when
+length is 500 no models were capable of surpassing the baseline even when
 allowed to train for significantly longer than reported in figure~\ref{fig:vbindn3}.
 
 These results affirm that the TGU is competitive with the state of the art approaches.
 They also suggest that the fundamental change -- focusing the expressive power in the
 gate rather than the candidate update -- makes a fundamental
-difference to the manner in which the network attends to its state. Further, limiting
-the space of potential solutions by removing the dependence of the candidate update on
-the hidden state seems to help make solutions easier to find.
+difference to the manner in which the network attends to its state. This change is clearly
+beneficial in this task, which is highly encouraging.
 
 
 \subsection{Sequential MNIST}
 A pair of recently proposed tasks which have gathered significant popularity lately
 are based around attempting to classify the MNIST handwritten image dataset 
-\autocite{Lecun1998}. To turn two dimensional images into a sequence task they are
+\autocite{Lecun1998}. To turn two dimensional images into sequences they are
 flattened in one of two ways: either in scan-line order beginning from the top-left
 going one row at a time or simply by taking a random permutation \autocite{Le2015}.
 
@@ -408,7 +419,8 @@ We use a grid search to find the best rank for the tensor models.
 \subsubsection{Results}
 
 \begin{table}
-\begin{tabu} to \textwidth {r|l}
+\centering
+\begin{tabu} to \textwidth {r||l}
 Architecture & Test Accuracy (\%)\\
 \hline
 TGU & 88.2\\
@@ -441,6 +453,7 @@ to train it on.
 
 
 \begin{figure}[ht]
+\centering
 \begin{subfigure}[t]{0.45\textwidth}
 	\includegraphics[width=\textwidth]{exps/mnist/cp-del-rank}
 	\caption{CP-\(\Delta\) by rank}
@@ -669,19 +682,21 @@ achieved with the lower learning rate while the best maximum length was task-dep
 %\end{tabu}
 
 \begin{table}
-\begin{tabu} to \linewidth {|r||c|c||c|c||c|c||c|c|}
-\hline
-	&	 \multicolumn{2}{c||}{Nottingham}     & \multicolumn{2}{c||}{JSB}          & \multicolumn{2}{c||}{Pianomidi}   & \multicolumn{2}{c|}{Muse} \\
+\centering
+\begin{tabu} to \linewidth {r||c|c||c|c||c|c||c|c|}
+%\hline
+	&	 \multicolumn{2}{c||}{Nottingham}     & \multicolumn{2}{c||}{JSB}          & \multicolumn{2}{c||}{Pianomidi}   & \multicolumn{2}{c}{Muse} \\
     	& \emph{Train}     & \emph{Test}      & \emph{Train}    & \emph{Test}      & \emph{Train}    & \emph{Test}     & \emph{Train}    & \emph{Test} \\
 \hline
-Vanilla   & \textbf{3.3278}& \textbf{3.8871}  & 8.0284	        & 8.6381           & 7.3874	         & 7.8093          & 6.8954	        & 7.3619   \\    
-LSTM      & 3.5826         & 4.0124		      & 8.2058	        & 8.6633           & 7.3730	         & 7.7542          & 7.0777	        & 7.4159   \\ 
-GRU		  & 3.5876		   & 4.0157		      & 8.1689	        & 8.6027           & 7.3039	         & 7.7652          & 7.0001	        & 7.3824   \\
 GMR	      & 3.3940		   & 3.9055		      & 8.0526	        & 8.6084           & 7.3598	         & 7.7676          & \textbf{6.8864}& \textbf{7.3089}\\
 GMR-C     & 3.7902		   & 4.1350		      & 8.0093	        & 8.5369           & 7.4244	         & 7.8615          & 6.9135	        & 7.4296 \\
 TGU		  & 3.9652		   & 4.2140		      & \textbf{7.9357} & 8.6060           & \textbf{7.2132} & 7.7161          & 7.4524	        & 7.6879 \\
 TGU-C     & 4.0035	       & 4.2531		      & 7.9731	        & \textbf{8.5307}  & 7.2748	         & \textbf{7.7003} & 7.4551	        & 7.6719   \\
-\hline\hline
+\hline
+Vanilla   & \textbf{3.3278}& \textbf{3.8871}  & 8.0284	        & 8.6381           & 7.3874	         & 7.8093          & 6.8954	        & 7.3619   \\    
+LSTM      & 3.5826         & 4.0124		      & 8.2058	        & 8.6633           & 7.3730	         & 7.7542          & 7.0777	        & 7.4159   \\ 
+GRU		  & 3.5876		   & 4.0157		      & 8.1689	        & 8.6027           & 7.3039	         & 7.7652          & 7.0001	        & 7.3824   \\
+\hline
 % \multicolumn{4}{c}{Muse} \\
 %    	& \emph{Train} & \emph{Valid} & \emph{Test} \\
 %\hline
@@ -757,7 +772,7 @@ linear candidate updates and separate biases. Three out of four of the TGUs surp
 linear candidate updates having a clear advantage.
 
 \begin{table}
-
+\centering
 \begin{tabu} to \textwidth {r||l|l|l}
  Architecture (rank) & \emph{Train} & \emph{Valid} & \emph{Test} \\
 \hline
@@ -772,12 +787,13 @@ Vanilla   & 85.10 & 164.81 & 156.63 \\
 \hline
 \end{tabu}
 
-\caption{Results of best early-stopped models on the Penn Treebank}
+\caption[PTB test set results]{Per-word perplexity of best early-stopped models on the Penn Treebank test set.}
 \label{tab:ptb}
 \end{table}
 
 
 \begin{figure}[ht]
+\centering
 \begin{subfigure}[t]{0.45\textwidth}
 	\includegraphics[width=\textwidth]{exps/ptb/tgu-rank}
 \end{subfigure}\hfill
@@ -851,19 +867,23 @@ a quarter of the number of hidden units.
 \begin{subfigure}[t]{0.3\textwidth}
 	\centering
 	\includegraphics[width=\textwidth]{exps/wp/gmr}
-	\caption{GMR-C by relative rank.}
+	\caption[War and Peace, GMR]
+	{GMR-C by relative rank.}
 \end{subfigure}~
 \begin{subfigure}[t]{0.3\textwidth}
 	\centering
 	\includegraphics[width=\textwidth]{exps/wp/lintgu}
-	\caption{TGU-C (with linear candidate states) by relative rank.}
+	\caption[War and Peace, TGU]
+	{TGU-C (with linear candidate states) by relative rank.}
 \end{subfigure}~
 \begin{subfigure}[t]{0.3\textwidth}
 	\centering
 	\includegraphics[width=\textwidth]{exps/wp/others}
-	\caption{Other architectures, exhibiting either slow learning or dramatic overfitting.}
+	\caption[War and Peace, other architectures]
+	{Other architectures exhibit slow learning or dramatic overfitting.}
 \end{subfigure}~
-\caption{Training and validation curves on War and Peace. 
+\caption[War and Peace, training curves]
+		{Training and validation curves on War and Peace. 
 		 Dashed lines indicate training loss, solid lines are the loss on the validation set.
 		 `Full' refers to rank equal to the number of hidden units, `one' simply means rank 1.}
 \label{fig:wp}
@@ -875,15 +895,18 @@ show remarkable resistance to overfitting compared to the other architectures. W
 interesting is that the validation error does not begin to rise seriously at all, regardless of the
 rank. Aside from rank one, which struggles to learn at all, the models benefit slightly from lower
 rank with best test performance being achieved by both tensor models with rank equal to a quarter
-of their number of hidden units.
+of their number of hidden units. The best GMR reported the best results on the test sets -- we
+attribute this to the fact that its only component is a tensor product so altering the rank has
+a much greater effect.
 
 Perhaps more unexpectedly, even the tensor model with an excessive rank of twice the number of hidden
 units still fails to overfit as dramatically as the LSTM or the Vanilla RNN. This seems to suggest that
-the tensor units work particularly well with the small embeddings and dropout which were primarily
-applied to allow the other architectures to report validation cross entropies below three or four
+the tensor units work particularly well with the small embeddings and dropout even though they were primarily
+applied to allow the other architectures to report validation cross entropies in a reasonable range
 at the end of training.
 
 \begin{table}
+\centering
 \begin{tabu} to \textwidth {r||c}
 Architecture & Test Cross-Entropy \\
 \hline

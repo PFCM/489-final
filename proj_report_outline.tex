@@ -1,23 +1,12 @@
-%% $RCSfile: proj_report_outline.tex,v $
-%% $Revision: 1.3 $
-%% $Date: 2016/06/10 03:41:54 $
-%% $Author: kevin $
-
-\documentclass[11pt
-              , a4paper
-              , twoside
-              , openright
-              ]{report}
+\documentclass[11pt, a4paper, twoside, openright]{report}
 
 \usepackage{multirow}
 
-\usepackage[
-			 %boxruled,
-		    %noend,
-		    ]{algorithm2e}
-%\DontPrintSemicolon
+\usepackage[boxruled, noend]{algorithm2e}
+\DontPrintSemicolon
 \usepackage{url} % for typesetting urls
 \usepackage{hyperref}
+\usepackage{float}
 
 %
 %  We don't want figures to float so we define
@@ -47,12 +36,7 @@
 \usepackage[image,ecs,bschonscomp]{vuwproject}
 
 \usepackage{microtype}
-\usepackage[style=numeric,
-			firstinits=true, 
-			url=false, 
-			isbn=false,
-			doi=false]
-			{biblatex}% "style=numeric" is default
+\usepackage[style=numeric, firstinits=true, url=false, isbn=false, doi=false]{biblatex}% "style=numeric" is default
 
 \addbibresource{library.bib}
 
@@ -162,7 +146,21 @@
 
 \begin{abstract}
 
-A short description of the project goes here.
+Recurrent Neural Networks are a class of machine learning techniques for handling sequential
+data. They have achieved great practical success but
+prominent architectures are opaque and unwieldy. We reveal a \emph{tensor} structure inherent
+to the most successful of these networks. 
+Understanding and analysing this structure gathers valuable insights into the mechanisms
+and shows a natural way of extending neural networks with multi-linear algebra and tensor
+decompositions.
+
+This allows us to propose the Tensor Gate Unit,
+a novel recurrent network architecture. This architecture is designed to be simple
+and modular, with only a minimum of components needed for performance.
+We show empirically that this relatively simple architecture is far better at solving
+a number of pathological tasks than standard approaches. We also demonstrate highly
+competitive results on real-world data, making use of the explicit tensor decomposition to
+manage the tradeoff between expressive power and generalisation performance.
 
 \end{abstract}
 
@@ -191,8 +189,10 @@ A short description of the project goes here.
 \include{exps/exps}
 \include{conclusion/conclusion}
 
+%TC: ignore
 \appendix
 \include{appendix/appendix}
+%TC:endignore
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

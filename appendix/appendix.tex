@@ -230,6 +230,200 @@ The CP decomposition is clearly the most appealing in this regard. Not only does
 single hyper-parameter to control the size, the fact that it grows linearly in that hyper-parameter
 makes it much more amenable to adjustment.
 
+\subsection{Experiments}
+In this section we detail experiments comparing the two decompositions.
+
+\subsubsection{Random Bilinear Products}\label{sec:randbilin}
+\paragraph{Goal.}
+The aim for this experiment is to compare the two decompositions. There are two scenarios to
+investigate: learning a decomposed tensor when the tensor has the same structure as the data and
+learning a decomposed tensor when it can only approximate the underlying structure. 
+
+\paragraph{Experiment Details.}
+This test uses the following procedure: generate a fixed random tensor \(\tensor{T}\)
+in the chosen decomposition with rank \(r_T\). Then generate a second tensor \(\tensor{W}\) 
+with rank \(r_W\). At each stage \(t\) generate a pair of random input vectors \(\vec{x}_t\) and
+\(\vec{y}_t\) and compute the bilinear products 
+\(\vec{z}_tt = \vec{x}_t^\mathsf{T}\tensor{T}\vec{y}_t\) and 
+\(\hat{\vec{z}}_t = \vec{x}_t^\mathsf{T}\tensor{W}\vec{y}_t\). Finally update the parameters of
+\(\tensor{W}\) to minimise the mean squared error between \(\vec{z}^t\) and \(\hat{\vec{z}}^t\)
+using stochastic gradient descent. In this way we hope to learn an approximation to 
+\(\tensor{T}\) in a similar setting to what might be found inside a neural network.
+
+We use a batch size of \(32\) and a fairly aggressive
+ learning rate of \(0.1\).
+Training continues for \(250,000\) parameter updates, although most of the tensors have stopped
+making significant improvements by that time. In all tests the input vectors had elements drawn
+from a uniform distribution over the range \([-1,1]\) while unless otherwise noted the elements of
+the decomposition are drawn from a normal distribution with mean \(0\) and standard deviation
+\(0.1\). We use the same random seed for each trial, which explains the similar patterns in the
+TT-decompositions loss curves.
+
+\paragraph{Results.}
+
+\begin{figure}[ht]
+\centering
+\begin{subfigure}[t]{0.45\textwidth}
+	\includegraphics[width=\textwidth]{tensors/cp100cpapprox}
+	\caption{Attempting to approximate by directly learning factor matrices representing a 
+		CP-decomposition of various ranks}
+	\label{fig:cpcpapprox}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.45\textwidth}
+	\includegraphics[width=\textwidth]{tensors/cp100ttapprox}
+	\caption{Attempting to approximate by directly learning a TT-decomposition of various ranks}
+	\label{fig:cpttapprox}
+\end{subfigure}
+\caption{Results for learning direct approximations of a CP-rank 100 tensor.}
+ \label{fig:cpapprox}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\begin{subfigure}[t]{0.45\textwidth}
+	\includegraphics[width=\textwidth]{tensors/tt16cpapprox}
+	\caption{Attempting to approximate by directly learning a 
+		CP-decomposition of various ranks}
+	\label{fig:ttcpapprox}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.45\textwidth}
+	\includegraphics[width=\textwidth]{tensors/tt16ttapprox}
+	\caption{Attempting to approximate by directly learning a TT-decomposition of various ranks}
+	\label{fig:ttttapprox}
+\end{subfigure}
+\caption{Results for learning direct approximations of a tt-rank 16 tensor.}
+\label{fig:ttapprox}
+\end{figure}
+The results of attempting to approximate a (CP) rank 100 tensor with dimensions 
+\(100 \times 100 \times 100\) (which has 30,000 independent coefficients) 
+are shown in figure~\ref{fig:cpapprox}.
+The CP-decomposition is able to perfectly represent it when the rank is high enough,
+but usefully it is able to converge on reasonable approximations when it can not
+represent the full tensor.
+The TT-decomposition struggled, both in stability during training and final error.
+While we might expect the CP-decomposition to better represent another CP-decomposition due to
+the shared structure, it is remarkable how difficult the TT-decomposition was to
+train.
+In general we see that the quality of the approximation drops consistently with the
+number of parameters in the approximator, which is to be expected.
+
+The experiment was repeated with the target tensor expressed is a TT-decomposition with ranks
+\(r_1 = r_2 = 16\) (28,800 coefficients). Results can be seen in figure~\ref{fig:ttapprox}.
+As should be expected, the TT-decomposition performed better. In particular a TT-decomposition
+matching the rank of the target tensor reached a very low error extraordinarily quickly,
+performing much better than the CP-decomposition under the same conditions.
+
+These results imply both decompositions are potentially useful. The CP-decomposition learns
+ reasonable approximations even when it does not necessarily reflect the
+structure of the underlying problem. The TT-decomposition struggles in this situation,
+but when the problem is structured more favourably it takes greater advantage.
+
+\subsubsection{Learning to multiply}
+\paragraph{Goal.}
+Learning bilinear functions provides a way to linearly approximate functions of two variables.
+A motivating example of such a function is element-wise multiplication, also known as the Hadamard
+product. In this section we investigate briefly the ability of the two decompositions to model
+such a product. We are particularly concerned with this as generalising this operation provides
+significant motivation for the current investigation.
+
+\paragraph{Experiment Details.}
+Learning exact element-wise products is a special case and can clearly be done with the 
+CP-decomposition without sacrificing parameter reduction. The question that remains is how closely
+a given decomposition can approximate an element-wise product, especially if there is some kind of
+helpful latent structure in the inputs to exploit. We test this by inducing a random structure
+on the inputs.
+
+This is performed identically to the experiments in section~\ref{sec:randbilin}
+except that that rather than generating a random tensor to provide the targets for training,
+we simply multiply element-wise the input vectors. We also simplify slightly by drawing the
+input vectors from \(\{0,1\}\) with equal probability
+(element-wise multiply in this sense corresponds to a bitwise AND). 
+Again the squared error loss is used, although
+a momentum term (with coefficient 0.9) was found to greatly assist learning.
+For a further test, the target
+output has a fixed permutation applied which removes the diagonal structure from the target but
+should still be a straightforward task. For this task we would
+expect that the CP-decomposition drastically outperforms the TT-decomposition.
+
+For a more realistic test we introduce a random structure to the input vectors. This is done by
+creating smaller vectors and expanding them to the appropriate size by copying the
+elements to random positions. The mapping of positions is fixed for the duration of a training
+run. We then experiment with varying the size of these smaller vectors and hence varying the
+degree of correlation between elements
+while keeping the rank of the decomposition being trained fixed. Here we have fewer
+preconceptions regarding the relative performance of the decompositions -- by introducing structure
+and reducing the complexity of the target relationship we would hope to see both decompositions making
+good progress.
+
+\paragraph{Results.}
+The results are shown in figure~\ref{fig:multiply-ff}
+and affirm our expectations. 
+The CP-decomposition is able to consistently reduce error as rank increases
+ while the TT-decomposition appears to struggle. Permuting the indices did not make any
+ difference to the relative performance.
+
+When there is significant structure to the inputs, the
+TT decomposition is notably worse. One hypothesis is that the CP decomposition simply represents
+higher rank tensors with the same number of parameters and that this is is what allows to better
+represent more complex structures. This is shown in the other results -- the rank 1 decompositions
+achieve similar performance regardless of the decomposition.
+
+\begin{figure}
+	\begin{subfigure}[t]{0.45\textwidth}
+		\includegraphics[width=\textwidth]{tensors/multiply-cp-mom}
+		\caption{Learning curves for CP-decompositions learning element-wise multiplication}
+	\end{subfigure}
+	\hfill
+	\begin{subfigure}[t]{0.45\textwidth}
+		\includegraphics[width=\textwidth]{tensors/multiply-tt-mom}
+		\caption{Learning curves for TT-decompositions learning element-wise multiplication}
+	\end{subfigure}
+	\caption{Training error for various rank decompositions on the element-wise multiplication
+	task.}
+	\label{fig:multiply-ff}
+\end{figure}
+
+
+\begin{figure}
+	\begin{subfigure}[t]{0.45\textwidth}
+		\includegraphics[width=\textwidth]{tensors/permute-cp-mom}
+		\caption{Learning curves for CP-decompositions learning permuted 
+		element-wise multiplication}
+	\end{subfigure}
+	~
+	\begin{subfigure}[t]{0.45\textwidth}
+		\includegraphics[width=\textwidth]{tensors/permute-tt-mom}
+		\caption{Learning curves for TT-decompositions learning permuted
+		 element-wise multiplication}
+	\end{subfigure}
+	\caption[Permuted element-wise multiplication results]{Training error for various rank decompositions on the permuted
+	element-wise multiplication
+	task.}
+	\label{fig:permute-multiply-ff}
+\end{figure} 
+
+\begin{figure}
+	\begin{subfigure}[t]{0.45\textwidth}
+		\includegraphics[width=\textwidth]{tensors/correlatecp50-mom}
+		\caption{Learning curves for a rank 50 CP-decomposition.}
+	\end{subfigure}
+	\hfill
+	\begin{subfigure}[t]{0.45\textwidth}
+		\includegraphics[width=\textwidth]{tensors/correlatett11-mom}
+		\caption{Learning curves for a rank 11 TT-decomposition.}
+	\end{subfigure}
+	\caption{Training error for two decompositions learning element-wise multiplication with
+	 varying amounts of structure.}
+	\label{fig:correlate-multiply}
+\end{figure}
+
+\section{Conclusion}
+In the three-way case, it is clear the the CP-decomposition is preferable. Theoretically it should
+be able to maintain its expressive power even at low-rank (and therefore with few parameters).
+Empirically this indeed seems to be the case. 
+
 \chapter{Additional Tables}
 \begin{table}
 \centering
@@ -260,30 +454,6 @@ requirements. They are not essential to the main text, but provide illustrative 
 \chapter{Additional Figures}
 This chapter contains a number of figures omitted from the main text because the relationships
 they reveal are very close to earlier figures.
-
-\section{Learning Tensors}
-Figure~\ref{fig:permute-multiply-ff} shows results for learning permuted element-wise multiplication,
-these are almost identical to the non-permuted version.
-
-
-
-\begin{figure}
-	\begin{subfigure}[t]{0.45\textwidth}
-		\includegraphics[width=\textwidth]{tensors/permute-cp-mom}
-		\caption{Learning curves for CP-decompositions learning permuted 
-		element-wise multiplication}
-	\end{subfigure}
-	~
-	\begin{subfigure}[t]{0.45\textwidth}
-		\includegraphics[width=\textwidth]{tensors/permute-tt-mom}
-		\caption{Learning curves for TT-decompositions learning permuted
-		 element-wise multiplication}
-	\end{subfigure}
-	\caption[Permuted element-wise multiplication results]{Training error for various rank decompositions on the permuted
-	element-wise multiplication
-	task.}
-	\label{fig:permute-multiply-ff}
-\end{figure} 
 
 \section{Synthetic Tasks}
 \subsection{Addition}
@@ -444,18 +614,22 @@ If \(z_j = x_jy_j\) as in the elementwise product, then it is clear we want \(H_
 the rest of the terms in the sums will disappear.
 \end{proof}
 
-\chapter{Initialization}
-RNNs can be quite sensitive to initialisation, especially with regard to learning long
+\chapter{Initialization}\label{A:init}
+RNNs can be sensitive to initialisation, especially with regard to learning long
 time dependencies \autocite{Le2015}. It has been suggested that a good initialisation should
 have eigenvalues on or inside the complex unit circle \autocite{Zilly2016, Mikolov2015} which
-would suggest initialising to an orthogonal or orthonormal matrix as per \autocite{Henaff2016}.
+would suggest initialising to an orthogonal or orthonormal matrix as per. \autocite{Henaff2016}.
 
-Figure~\ref{fig:inits} shows some simplified simulation to illustrate the effect of
-different methods of initialisation with different forms of gated recurrence. They are
+Figure~\ref{fig:inits} shows some simplified simulations to illustrate the effect of
+different methods of initialisation in conjunction with different forms of gated recurrence. They are
 simulated with no non-linearity and a single input at the first time step sampled from a unit
 normal. If gate values are required, they are sampled uniformly in \([0,1]\). We then simply
 run the recurrence over the hidden state for a number of time steps plotting each cell's state
-as a grayscale value.
+as a grayscale value. This makes it quite clear whether the initialisation preserves the variance
+of the original input by observing the patterns it makes. Significant periodicities are
+good as they indicate the network has plenty of temporal information to latch onto during
+training. If most of the state is uniform grey it would suggest that the state vanishes
+or explodes.
 
 We show three possible procedures: random normal (mean 0, standard deviation 0.01), spectral
 normalised and orthonormal. The spectral normalised matrix is a random normal matrix that
@@ -469,11 +643,11 @@ Q.
 \begin{subfigure}[t]{0.3\textwidth}
 \includegraphics[width=\textwidth]{appendix/init/vanillanormal}
 \caption{Vanilla transition, normal initialisation.}
-\end{subfigure}~
+\end{subfigure}\hfill
 \begin{subfigure}[t]{0.3\textwidth}
 \includegraphics[width=\textwidth]{appendix/init/lstmnormal}
 \caption{Forget gate transition, normal initialisation.}
-\end{subfigure}~
+\end{subfigure}\hfill
 \begin{subfigure}[t]{0.3\textwidth}
 \includegraphics[width=\textwidth]{appendix/init/grunormal}
 \caption{Convex gate transition, normal initialisation.}
@@ -482,11 +656,11 @@ Q.
 \begin{subfigure}[t]{0.3\textwidth}
 \includegraphics[width=\textwidth]{appendix/init/vanillaspec}
 \caption{Vanilla transition, spectral normalised initialisation.}
-\end{subfigure}~
+\end{subfigure}\hfill
 \begin{subfigure}[t]{0.3\textwidth}
 \includegraphics[width=\textwidth]{appendix/init/lstmspec}
 \caption{Forget gate transition, spectral normalised initialisation.}
-\end{subfigure}~
+\end{subfigure}\hfill
 \begin{subfigure}[t]{0.3\textwidth}
 \includegraphics[width=\textwidth]{appendix/init/gruspec}
 \caption{Convex gate transition, spectral normalised initialisation.}
@@ -495,13 +669,13 @@ Q.
 \begin{subfigure}[t]{0.3\textwidth}
 \includegraphics[width=\textwidth]{appendix/init/vanillaorth}
 \caption{Vanilla transition, orthonormal initialisation.}
-\end{subfigure}~
+\end{subfigure}\hfill
 \begin{subfigure}[t]{0.3\textwidth}
 \includegraphics[width=\textwidth]{appendix/init/lstmorth}
 \caption{Forget gate transition, orthonormal initialisation.}
-\end{subfigure}~
+\end{subfigure}\hfill
 \begin{subfigure}[t]{0.3\textwidth}
-\includegraphics[width=\textwidth]{appendix/init/gruspec}
+\includegraphics[width=\textwidth]{appendix/init/gruorth}
 \caption{Convex gate transition, orthonormal initialisation.}
 \end{subfigure}\\
 
