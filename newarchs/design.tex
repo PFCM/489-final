@@ -2,10 +2,12 @@
 
 \chapter{Proposed Architectures}\label{C:arch}
 In this chapter we use the intuitions gathered from related works to propose novel classes of
-architectures employing tensor decompositions to implement multiplicative connections. There are
+architectures employing tensor decompositions to implement multiplicative connections. We term this
+family of architectures \emph{Recurrent Tensor Networks} to emphasise their explicit incorporation
+of a decomposed tensor. There are
 two key principles: simplicity and modularity. We want to design networks that have no extraneous
-components, such that every element of the network has a clearly defined role. We first propose
-two novel architectures utilising a tensor product and then explain the decisions that let to their
+components so that every element of the network has a clearly defined role. We first propose
+two novel architectures utilising a tensor product and then explain the decisions that led to their
 construction.
 
 \section{Architectures}
@@ -20,7 +22,7 @@ and \(\tilde{\mat{U}}\) is a matrix with a corresponding additional row.
 
 Generalising this construction to a three-way tensor we have to take an \(n_1 \times n_2 \times n_3\)
 tensor to size \(n_1 + 1 \times n_2 \times n_3 +1\). If we then perform a bilinear product and separate
-back out the extra components, we find that as well as the expected bias vector we also have
+back out the extra components, we find that as well as the expected bias vector we have
 two bias matrices, one per input. For a three-way tensor \(\tensor{W}\),
 \begin{equation}\label{eq:tensorbias}
 	\tran{\tilde{\vec{x}}}\widetilde{\tensor{W}}\tilde{\vec{y}}
@@ -72,9 +74,9 @@ Where \(f(\cdot)\) is either a linear rectifier or the identity function.
 \section{Motivation}
 The GMR is an elegant generalisation of a number of fairly simple architectures. However, it will
 still suffer from vanishing gradients and correspondingly we do not expect it to be capable of
-learning long time dependencies. To solve this, we incorporate several
+learning long time dependencies. To solve this in the TGU we incorporate several
 key ideas from the LSTM and the GRU. This section explains in detail the decisions taken and
-the motivation and analysis behind them.
+the analysis behind them.
 
 \subsection{Solving Vanishing Gradients}\label{sec:additive}
 The biggest issue with the GMR and Vanilla-style RNNs in general is vanishing gradients.
@@ -82,16 +84,16 @@ A simple approach to avoid this
  is to have the network compute a candidate state update
 \(\vec{z}_t\) and obtain new hidden states as
 \begin{equation}\label{eq:additiveupdate}
-	\vec{h}_k = \vec{h}_{k-1} + \vec{z}_k
-\end{equation} rather than computing the new state directly.
+	\vec{h}_k = \vec{h}_{k-1} + \vec{z}_k.
+\end{equation}
 
 Recalling eq.~\eqref{eq:bptt-v}, the problematic term was \(\nabla_{\vec{h_{k-1}}}\vec{h}_k\),
 the gradient of a hidden state with respect to its immediate precursor. If the state is computed by
 eq.~\eqref{eq:additiveupdate}:
 \begin{equation}\label{eq:additivegrad}
 	\nabla_{\vec{h}_{k-1}}\vec{h}_k = \mat{I} + \nabla_{\vec{h}_{k-1}}\vec{z}_k.
-\end{equation} Adding the identity matrix adds one to the eigenvalues of the gradient, which should go
-a long way to avoiding vanishing.
+\end{equation} Adding the identity matrix adds one to each eigenvalue of the gradient, which ensures
+that at least.
 
 While the gradients may not vanish, they are likely to explode. Pascanu et al. show that a necessary
 condition for exploding gradients is that the largest
@@ -99,7 +101,6 @@ eigenvalue of this gradient is greater than one \autocite{Pascanu2012}. For this
 additive update all we require for exploding gradients is then for
 \(\nabla_{\vec{h}_{k-1}}\vec{z}_ k\) to have at least one positive eigenvalue. This is highly likely
  from random initialisation, so this architecture is going to be challenging to train.
-
 Additive connections give us a way to fight vanishing gradients, but we need to temper them somehow
 to avoid exploding gradients. Fortunately, LSTMs and GRUs already present a class of successful
 techniques for this.
@@ -128,7 +129,7 @@ We term this the \emph{convex} gate as it recursively computes convex sums.
 
 Both of these gates apply element-wise. Although as multiplicative structures we could generalise
 them with a tensor product, the element-wise nature is essential for keeping the gradients intact.
-Applying a gate will replace the identity matrix in eq.~\ref{eq:additivegrad}
+Applying a gate will replace the identity matrix in eq.~\eqref{eq:additivegrad}
 with some other matrix. If the gating is done element-wise, then the new matrix will remain diagonal,
 meaning it will still act purely additively on the eigenvalues of the gradient. If we allow a tensor
 product, then we could be adding any arbitrary matrix into the gradient, which will exactly re-introduce
@@ -136,32 +137,31 @@ the pathologies we seek to avoid.
 
 Denote by \(p_t\) the gate signal at time \(t\) (which is a
 function of both the input and the current state and bounded in \([0, 1]\)). We also use
-\(h_t\) to refer to the hidden state at time \(t\), the object of interest, and \(z_t\) will
+\(h_t\) to refer to the hidden state at time \(t\) and \(z_t\) will
 refer to the candidate update computed by the rest of the network. In general these
-elements will be vectors, but in the following we assume scalars with no loss of generality as
+elements are vectors but in the following we assume scalars with no loss of generality as
 the vector forms contain only element-wise operations.
 
 We define the
 forget gate's recurrence as
 \begin{equation}
-	h_t = p_th_{t-1} + z_t
+	h_t = p_th_{t-1} + z_t.
 	\label{eq:forgetgate}
-\end{equation} for \(z_t\) the new candidate state which is typically a function of
-both \(h_{t-1}\) and the input at time \(t\). This allows the network to wholly replace the
+\end{equation} The forget gate allows the network to wholly replace the
 state with a new value.
 
 The convex gate makes the following modification:
 \begin{equation}
 	h_t = p_th_{t-1} + (1-p_t)z_t.
 	\label{eq:cvexgate}
-\end{equation} This allows the one gate signal
+\end{equation} While a simple adjustment, one gate signal is now able
 to control the acceptance or rejection of new information.
 
 In order to analyse the behaviour of these gates, we observe that each state \(h_t\)
 can be expanded as a weighted sum over all \(z_i\) for \(i \leq t\). We can think of
 the states as being a sliding-window sum over candidates where the shape of the window is defined
 recursively by the \(p_i\) values.\footnote{There is in fact no sliding window -- the sum is always
-over all values. However given the range of window shapes the gating mechanism is capable of producing
+over all values. However, given the range of window shapes the gating mechanism is capable of producing
 it is reasonable to think about it as something close to a one-dimensional convolution.}
 With this view in mind, we note that we can think of the
 gate signals \(p_i\) as providing an \emph{attention} mechanism which controls how the network
@@ -169,7 +169,7 @@ attends to the information from past time steps.
 
 \subsubsection{Forget Gate}
 The forget gate allows the network to completely replace a state.
-For this to happen the gate signal simply needs to be zero. If we define the initial
+For this to happen the gate signal needs to be zero. If we define the initial
 state \(h_0 = z_0\) we can write the first few states explicitly:
 \begin{align}
 	h_1 &= p_1z_0 + z_1 \\
@@ -264,8 +264,8 @@ the same argument applies.
 	= \left(\prod_{k=i+1}^t p_k\right) \cdot
 			1. \\
 \end{align} If the gates
-exhibit a strong decay, the network will be forced to update primarily on
-local information so it will struggle to learn long time dependencies.
+induce a strong decay, the network will be forced to update primarily on
+local information and will struggle to learn long time dependencies.
 A common practical solution is to initialise the bias of the unit computing the forget to a high
 positive value so the gates start higher \autocite{Jozefowicz2015}.
 
@@ -352,7 +352,7 @@ than the forget gate, despite their similar formulation.
 This enhanced range of window shapes makes these gates appealing as they may be able to reduce
 interdependence between the gate mechanism and the candidate production mechanism. This may
 allow us to remove the candidate's dependence on the previous state which should solve many of the
-issues with the above gate.
+issues with the forget gate.
 
 \paragraph{Gradients are still gated.}
 The gradient of the hidden state \(h_t\) with respect to a previous gate signal
@@ -376,7 +376,7 @@ backward pass.
 
 Equation~\eqref{eq:cvexgrad} is interesting -- the gradient of the state with respect to the gate value
 depends not just on the preceding state but on the difference between the state and the proposed
-update. This suggests that during training what drives the updates is the possible changes that could be
+update. This means that during training what drives the updates is the possible changes that could be
 made to the state, rather than just the state values itself. Meanwhile, eq.~\eqref{eq:cvexstategrad}
 shows that proposition~\ref{prop:convexsum} also applies to the gradients. 
 This suggests that as long as the scale of the candidate updates is under control
@@ -391,7 +391,7 @@ will not correspond to a flatter window.
 
 \subsubsection{Conclusions}
 The convex gate by itself seems more capable than the forget gate as it is able to represent more
-useful distributions over past candidate states while successfully employing a forget gate requires a more
+useful distributions over past candidate states where successfully employing a forget gate requires a more
 complex method of producing candidate states. The convex gate avoids the issue of requiring
 two components to learn complementary behaviours by allowing a single component to carry out the job.
 This is appealing as it enables simpler and more modular architectures.
@@ -421,18 +421,18 @@ input matches a pattern stored in the state. This is a mode of behaviour very di
 with existing gated architectures \autocite{Danihelka2016}.
 
 \subsection{Candidate update}
-All that remains is to derive a candidate state update. In all of the architectures
-surveyed apart from the Strongly Typed variants \autocite{Balduzzi2016} it is assumed that this needs
-to be a binary function of the current input and the previous hidden state. Intuitively this needs to
-be the case with the LSTM style forget gate, but as we have decided against that it is worth questioning
-this assumption.
+All that remains is to derive a candidate state update. Aside from Strongly Typed RNNs \autocite{Balduzzi2016}
+and some Associative LSTM variants \autocite{Danihelka2016} this is usually performed via
+a binary function of the current input and the previous hidden state. Intuitively this needs to
+be the case with the standard LSTM style forget gate, but as we have decided against that it is worth questioning
+the necessity of the previous hidden state in this calculation.
 
-Removing this step makes each role in the network clearly defined. As each input comes in, it is
+Removing this recurrent dependence makes each role in the network clearly defined. As each input arrives, it is
 embedded into the state space. The gate then decides whether it is worth keeping.
 The candidate production mechanism only needs to behave as a feature
 detector, transforming the input into a representation that captures its essential structure.
 Conceptually this is very clean and modular and therefore favourable provided it does not strip
-the model of too much expressive power, which is a question to be determined empirically.
+the model of too much expressive power, which is best determined empirically.
 %
 %This scheme is appealing due to its simplicity and separation of
 %roles, although two questions remain to be answered: how does this affect the expressive power of the
@@ -445,7 +445,7 @@ the model of too much expressive power, which is a question to be determined emp
 %Vanilla RNN, we suggest that removing this mode of behaviour is no great loss. Further,
 %we suggest it may help optimisation if there is only one clear way in which to store information.
 
-What remains is to determine how to compute the candidate from the input. We wish to model a unary
+What remains is to decide how to compute the candidate from the input. We wish to model a unary
 mapping from the input to the candidate, so a logical way to proceed is with a standard feed-forward
 layer:
 \begin{equation}\label{eq:propcandidate}
@@ -454,12 +454,12 @@ layer:
 performance was consistently achieved with either a linear rectifier or no
 non-linearity at all. This echoes trends in feed-forward networks away from saturating non-linearities
 towards unbounded, piecewise linear activation functions \autocite{Goodfellow2013, He}. It is
-interesting that for many tasks a completely linear candidate performed optimally -- clearly the
-expressive power of the tensor combined with the non-linearity applied to the gate is sufficient to
+interesting that for many tasks a linear candidate performed best -- clearly the
+expressive power of the tensor combined with the non-linearity of to the gate is sufficient to
 maintain the representative power of the network as a whole.
 
 While a single feed-forward layer was sufficient in our experiments, there is scope to expand this
 depending on the complexity of the task. For example this could be a deeper feed-forward architecture,
-a convolutional neural network if the inputs have appropriate structure or even an identity map if the
+a convolutional neural network or even an identity map if the
 input to the network is already high-level features.
 

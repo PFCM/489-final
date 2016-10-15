@@ -66,9 +66,9 @@ out of relatively small three-way tensors.
 	\begin{subfigure}[t]{0.45\textwidth}
 		\begin{tikzpicture}
 		\draw
-				(2,0) -- (1,0) node[label=below:{\(\mat{A}\)}]{}
+				(2,0) -- (1,0) node[label=below:{\(\mat{C}\)}]{}
 				-- (0,0)
-				(-2,0) -- (-1,0) node[label=below:{\(\mat{C}\)}]{}
+				(-2,0) -- (-1,0) node[label=below:{\(\mat{A}\)}]{}
 				-- (0,0)
 				(0,0) node[label=below:{\(\tensor{B}\)}]{} -- (0,1)
 			;
@@ -425,7 +425,7 @@ be able to maintain its expressive power even at low-rank (and therefore with fe
 Empirically this indeed seems to be the case. 
 
 \chapter{Additional Tables}
-\begin{table}
+\begin{table}[h]
 \centering
 \begin{tabu} to 0.5\linewidth {|r|l|}
 \hline 
@@ -450,6 +450,36 @@ column of matrix (vector) & \(\vec{C}_{\midbullet i}\)\\
 
 This chapter contains additional tables which were omitted from the main text due to space
 requirements. They are not essential to the main text, but provide illustrative examples.
+
+\section{Real Data}
+
+\subsection{Polyphonic Music}
+The sizes of the models used are reported in table~\ref{tab:jsbsizes}.
+
+
+\begin{table}[h]
+\centering
+\begin{tabu} to \linewidth {r||c|c|c|c}
+\hline
+Model & \multicolumn{4}{|c}{hidden units/rank (parameters)} \\
+\hline
+Vanilla & \multicolumn{4}{|c}{96  (19927)} \\
+LSTM & \multicolumn{4}{|c}{44 (20075)} \\
+GRU & \multicolumn{4}{|c}{52 (19763)} \\
+\hline
+GMR & 95/1 (19870) & 71/35 (19872) & 58/58 (19775) & 45/90 (20125) \\
+GMR-C & 349/1 (20005) & 106/52 (20142) & 76/76 (20119) & 53/106 (20248) \\
+TGU &  80/1 (20030) & 63/31 (20156) &  53/53 (20248) & 41/82 (19817) \\
+TGU-C &  176/1 (20000) & 88/44 (20075) & 66/66 (19855) & 48/96 (20071)\\
+\hline
+\end{tabu}
+\caption[Model sizes for polyphonic music task]{Size of models for polyphonic music
+modelling. Architectures with -C appended have the bias matrices combined with the
+decomposition. Parameters are reported for inputs of size \(54\) as per the JSB dataset.
+Rank is only reported if applicable.}
+\label{tab:jsbsizes}
+\end{table}
+
 
 \chapter{Additional Figures}
 This chapter contains a number of figures omitted from the main text because the relationships
@@ -502,14 +532,22 @@ Results are very similar to those at sequence length 750.
 
 \begin{figure}
 \centering
-	\begin{tabu} to \textwidth {XX}
-		Input & Target \\
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x1input} & 
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x1target} \\
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x2input} & 
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x2target} \\
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x3input} & 
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x3target} \\
+%	\begin{tabu} to \textwidth {XX}
+%		Input & Target \\
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x1input} & 
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x1target} \\
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x2input} & 
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x2target} \\
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x3input} & 
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x3target} \\
+%	\end{tabu}
+	\begin{tabu} to \textwidth {r|cc}
+		 \multirow{2}{*}{1 pattern} & input: & \includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x1input} \\[5pt]
+		  							& target: &\includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x1target} \\[5pt]
+		\multirow{2}{*}{2 patterns} & input: & \includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x2input} \\[5pt]
+		  							& target: &\includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x2target} \\[5pt]
+		\multirow{2}{*}{3 patterns} & input: & \includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x3input} \\[5pt]
+		  							& target: &\includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x3target} \\[5pt]
 	\end{tabu}
 	\caption[Example instances of variable binding]{Example input/target pairs for the three
 	different variable binding tasks. All have length 100, with 8 bit patterns -- all that differs
@@ -519,14 +557,22 @@ Results are very similar to those at sequence length 750.
 
 \begin{figure}
 \centering
-	\begin{tabu} to \textwidth {XX}
-		Input & Output \\
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x1tguinput} & 
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x1tguoutput} \\
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x2tguinput} & 
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x2tguoutput} \\
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x3tguinput} & 
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x3tguoutput} \\
+%	\begin{tabu} to \textwidth {XX}
+%		Input & Output \\
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x1tguinput} & 
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x1tguoutput} \\
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x2tguinput} & 
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x2tguoutput} \\
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x3tguinput} & 
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x3tguoutput} \\
+%	\end{tabu}
+\begin{tabu} to \textwidth {r|cc}
+		 \multirow{2}{*}{1 pattern} & input: & \includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x1tguinput} \\[5pt]
+		  							& output: &\includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x1tguoutput} \\[5pt]
+		\multirow{2}{*}{2 patterns} & input: & \includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x2tguinput} \\[5pt]
+		  							& output: &\includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x2tguoutput} \\[5pt]
+		\multirow{2}{*}{3 patterns} & input: & \includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x3tguinput} \\[5pt]
+		  							& output: &\includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x3tguoutput} \\[5pt]
 	\end{tabu}
 	\caption[Example successful outputs for variable binding]{Outputs from TGU models that that
 	achieved good results.}
@@ -535,14 +581,22 @@ Results are very similar to those at sequence length 750.
 
 \begin{figure}
 \centering
-	\begin{tabu} to \textwidth {XX}
-		Input & Output \\
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x1gruinput} & 
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x1gruoutput} \\
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x2gruinput} & 
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x2gruoutput} \\
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x3gruinput} & 
-		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x3gruoutput} \\
+%	\begin{tabu} to \textwidth {XX}
+%		Input & Output \\
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x1gruinput} & 
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x1gruoutput} \\
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x2gruinput} & 
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x2gruoutput} \\
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x3gruinput} & 
+%		\includegraphics[width=0.45\textwidth, interpolate=false]{exps/vbind/100x3gruoutput} \\
+%	\end{tabu}
+\begin{tabu} to \textwidth {r|cc}
+		 \multirow{2}{*}{1 pattern} & input: & \includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x1gruinput} \\[5pt]
+		  							& output: &\includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x1gruoutput} \\[5pt]
+		\multirow{2}{*}{2 patterns} & input: & \includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x2gruinput} \\[5pt]
+		  							& output: &\includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x2gruoutput} \\[5pt]
+		\multirow{2}{*}{3 patterns} & input: & \includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x3gruinput} \\[5pt]
+		  							& output: &\includegraphics[align=c,width=0.6\textwidth]{exps/vbind/100x3gruoutput} \\[5pt]
 	\end{tabu}
 	\caption[Example of baseline for variable binding]{Output from GRUs demonstrating the baseline
 	behaviour -- the timing is correct but the output is not related to the input.}
@@ -552,34 +606,6 @@ Results are very similar to those at sequence length 750.
 Figures~\ref{fig:vbinddata}, \ref{fig:vbindcorrect} and \ref{fig:vbindfail} all show examples of
 the inputs and outputs for the variable binding task. Including the outputs of a successful network
 and an network that failed to progress beyond the baseline.
-
-\section{Real Data}
-
-\subsection{Polyphonic Music}
-The sizes of the models used are reported in table~\ref{tab:jsbsizes}.
-
-
-\begin{table}
-\begin{tabu} to \linewidth {r||c|c|c|c}
-\hline
-Model & \multicolumn{4}{|c}{hidden units/rank (parameters)} \\
-\hline
-Vanilla & \multicolumn{4}{|c}{96  (19927)} \\
-LSTM & \multicolumn{4}{|c}{44 (20075)} \\
-GRU & \multicolumn{4}{|c}{52 (19763)} \\
-\hline
-GMR & 95/1 (19870) & 71/35 (19872) & 58/58 (19775) & 45/90 (20125) \\
-GMR-C & 349/1 (20005) & 106/52 (20142) & 76/76 (20119) & 53/106 (20248) \\
-TGU &  80/1 (20030) & 63/31 (20156) &  53/53 (20248) & 41/82 (19817) \\
-TGU-C &  176/1 (20000) & 88/44 (20075) & 66/66 (19855) & 48/96 (20071)\\
-\hline
-\end{tabu}
-\caption[Model sizes for polyphonic music task]{Size of models for polyphonic music
-modelling. Architectures with -C appended have the bias matrices combined with the
-decomposition. Parameters are reported for inputs of size \(54\) as per the JSB dataset.
-Rank is only reported if applicable.}
-\label{tab:jsbsizes}
-\end{table}
 
 \chapter{Additional Proofs}
 There are a number of useful facts which are used throughout the document. Here we provide

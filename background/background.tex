@@ -3,18 +3,18 @@
 \section{Feed-Forward Neural Networks}
 Feed-forward neural networks are a class of parameterised function approximators which consist of
 artificial neurons arranged in layers. The building block derives from the perceptron
-\autocite{Rosenblatt1958} and the networks are often termed `multi-layer perceptrons' (MLPs). MLPs solve
+\autocite{Rosenblatt1958} and the networks are often termed \emph{multi-layer perceptrons} (MLPs). MLPs solve
 the key limitations of the earlier perceptron \autocite{Minsky1969}, but it was not until 1986
 when a reliable and general purpose procedure was 
 proposed to train them \autocite{Rumelhart1986}.
 
 It is possible to consider MLPs as a directed acyclic graph, where each node consists
-of a `neuron' or `unit' with the direction of the edges indicating the direction information flows from
+of a \emph{neuron} or \emph{unit} with the direction of the edges indicating the direction information flows from
 the input to the output. For an MLP this graph is divided into layers.
 The first layer represents the input (with one unit per coordinate) while subsequent layers
 represent individual neurons. In a standard fully-connected network, every node is connected to all
 nodes in the preceding layer. When an input is presented to the network, each neuron computes
-an activation by applying some non-linear function to a weighted sum of its inputs. 
+an activation by applying a non-linear function to a weighted sum of its inputs. 
 %Specifically a unit that receives inputs \((x_1, x_2, \ldots, x_n)\) will compute its
 %activation \(h\) as:
 %\begin{equation}\label{eq:perceptron}
@@ -26,7 +26,7 @@ an activation by applying some non-linear function to a weighted sum of its inpu
 %\(\rho(x) = \max(0, x)\) \autocite{Nair}.
 
 Computationally and
-notationally it is efficient to express many neurons at once, using vectors and matrices.
+notationally it is efficient to express many neurons at once using vectors and matrices.
 Consider the input to a network as a vector of features \(\vec{x}\)
 and let \(\mat{W}\) be a matrix
 whose rows contain the weights for each neuron. The output of the layer is given by
@@ -54,7 +54,7 @@ is often linear:
 \(\vec{h}\) as before
 and then with another set of weights transform the hidden units to get a final output.
 
-Such neural networks are universal function approximators \autocite{Hornik1989}. However it is often
+Although such neural networks are universal function approximators \autocite{Hornik1989} it is often
 beneficial in practice to increase the depth as this can allow the network to express more complex
 relationships
 with only a moderate increase in learned parameters  \autocite{Telgarsky2016}. Depth is increased
@@ -69,7 +69,7 @@ recently residual or skip connections which change the structure of the graph to
 information \autocite{He2015, Huang2016}.
 
 \subsection{Training}
-These networks are typically trained in a supervised manner. Denote the parameters of the network
+Neural networks are typically trained in a supervised manner. Denote the parameters of the network
 \(\theta = \{\mat{W}^{(l)}, \ldots, \mat{W}^{(1)}, \vec{b}^{(l)}, \ldots, \vec{b}^{(l)}\}\) and
 the output of the network for a given input \(\vec{x}\) and set of parameters as 
 \(\hat{\vec{y}} = \mathcal{F}(\vec{x};\; \theta)\). Suppose we have a set of \(m\) data items
@@ -79,7 +79,7 @@ feasible \(\vec{y}\) values.
 We
 wish to learn a mapping which will transform each  \(\vec{x}_i\) into \(\vec{y}_i\).
 
-To do this we define a loss function
+To evaluate such mapping we define a loss function
 \(\mathcal{L} : \mathcal{Y} \times \mathcal{Y} \mapsto \mathbb{R}\) which maps pairs of valid outputs
 to a real number, such that \(\mathcal{L}(\vec{y}, \hat{\vec{y}}) = 0\) implies 
 \(\vec{y} = \hat{\vec{y}}\). Typical loss functions are the squared error
@@ -91,10 +91,10 @@ to a real number, such that \(\mathcal{L}(\vec{y}, \hat{\vec{y}}) = 0\) implies
 \(
 	\mathcal{L}_{CE}(\vec{y}, \hat{\vec{y}}) = -\sum_d y_d \log(\hat{y}_d)
 \) (ensuring some safeguards are put in place to avoid attempting to compute \(\log 0\)).
-The cross entropy is typically preferred when the targets can be interpreted as
+The cross entropy is preferred when the targets can be interpreted as
 probabilities.\footnote{For example, discrete class labels -- we can convert them to a one-of-\(n\)
 (often termed ``one-hot'') taking discrete labels between 1 and \(n\) to \(n\) dimensional vectors
-with \(0\) in all positions bar one, which has its element set to \(1\). We can then view these
+with \(0\) in all positions except one, which has its element set to \(1\). We can then view these
 vectors as a (very certain) probability distribution over classes. In this case the cross entropy
 corresponds exactly to the negative log-likelihood of the correct class.} This requires converting
 the output of the network to a probability, typically done with either the sigmoid function 
@@ -106,14 +106,17 @@ optimisation problem:
 \begin{equation}\label{eq:nnoptimise}
 	\theta^* = 
 	\argmin_{\theta} \sum_{i=1}^m \mathcal{L}(\vec{y_i}, \mathcal{F}(\vec{x}_i;\; \theta)).
-\end{equation}
-This is typically done using gradient descent. In its simplest
+\end{equation} In general this problem is non-convex and contains many local minima and saddle points
+\autocite{Dauphin2014, Kawaguchi2016} although in practice, local methods work remarkably well
+\autocite{Goodfellow2015}.
+
+The weights are typically learned using gradient descent -- in its simplest
 form, each weight is updated repeatedly in a direction which should reduce the loss:
 \begin{equation} \label{eq:graddescent}
 	\mat{W} \gets \mat{W} - \eta \cdot \nabla_{\mat{W}}\mathcal{L}
 \end{equation} where \(\eta\) is a hyper parameter adjusting the step size (called the
 \emph{learning rate}) and \(\nabla_{\mat{W}}\mathcal{L}\) is the gradient of the loss with respect
-to \(\mat{W}\). Typically the gradient is evaluated over a small subset or ``mini-batch''
+to \(\mat{W}\). Typically the gradient is evaluated over a small subset or \emph{mini-batch}
  of the data per iteration which gives a noisy estimate of the true gradient.
 The gradients of deep networks can be calculated using \emph{back-propagation}, which amounts
 to the chain rule of calculus and the observation that neural networks consist of many
@@ -123,17 +126,18 @@ differentiation such as Tensorflow \autocite{Abadi2015} or Theano
  \autocite{TheTheanoDevelopmentTeam2016}.
 
 \section{Recurrent Neural Networks}
-The Recurrent Neural Networks (RNNs) considered here generalise feed-forward networks to
-address problems in which we wish to map a sequence of input vectors
+The Recurrent Neural Networks (RNNs) considered here extend feed-forward networks to
+address problems where we wish to map a sequence of input vectors
 \((\vec{x}_1, \vec{x}_2, \dots \vec{x}_T) \) to a sequence of output vectors
 \((\vec{y}_1, \vec{y}_2, \dots \vec{y}_T) \). They have been applied successfuly to a
 wide range of tasks which including statistical language modelling
 \autocite{Mikolov2012}, machine translation \autocite{Cho2014, Wu2016a}, speech 
 recognition \autocite{Graves2006}, music classification \autocite{Choi2016},
-image generation \autocite{Gregor2015}, automatic captioning \autocite{Vinyals2016, Xu2015}  and more.
+image generation \autocite{Gregor2015}, automatic captioning \autocite{Vinyals2016, Xu2015}  and more
+with incredible success.
 
 \subsection{Classical Formulation}
-An RNN is able to maintain context over a sequence by transferring its hidden state from one
+An RNN maintains context over a sequence by transferring its hidden state from one
 time step to the next. We refer to the vector of states at time \(t\) as \(\vec{h}_t\).
 The classic RNN (often termed ``Vanilla'') originally proposed in \autocite{Elman1990}
 computes its hidden states with the following recurrence:
@@ -173,7 +177,7 @@ hidden states themselves. Choosing a hidden state \(i\) somewhere in the sequenc
 	\label{eq:delhL}
 \end{equation} from the definition of the loss and the fact that a hidden state may affect all
 future losses. To determine each \(\nabla_{\vec{h_i}}\mathcal{L}_j\) (noting \(j \geq i\)), we
-apply the chain rule, to back-propagate the error from time \(j\) to time \(i\). This is the step
+apply the chain rule to back-propagate the error from time \(j\) to time \(i\). This is the step
 from which the algorithm derives its name, and simply requires multiplying through adjacent
 time steps. Let \(\vec{z}_k = \mat{W}\vec{h}_{t-1} + \mat{U}\vec{x}_t +  \vec{b}\) be the
 pre-activation of the hidden states. Then
@@ -216,23 +220,25 @@ propagate it backward in time, leading to a negligible update to the weights.
  illustrative purposes that \(f(\cdot)\) is the identity function (so we have a linear network),
 then the loss vector is multiplied by \(\mat{W}\) taken to the \((j-i)\)-th power. If the largest
 eigenvalue of \(\mat{W}\) is large, then this will cause the gradient to rapidly explode.
-If the largest eigenvalue is small, then the gradient will vanish. This issue was presented
-as early as 1994 where it was shown to be unavoidable if the network needs to both store
+If the largest eigenvalue is small, then the gradient will vanish. 
+
+Vanishing gradients were diagnosed
+as early as 1994 where and shown to be unavoidable if the network needs to both store
 information and be robust to noise \autocite{Bengio1994}. 
 However, this has not precluded further research into alleviating
 the main symptoms; for a thorough treatment see \autocite{Pascanu2012}.
 In the non-linear case, this remains a serious issue. While exploding gradients are often
-mitigated by using a \emph{saturating} non-linearity where that the gradient tends to zero as the
+mitigated by using a \emph{saturating} non-linearity where the gradient tends to zero as the
 hidden states grow, this only exacerbates the vanishing problem. 
 
-The key symptom of vanishing gradients in RNNs is that it makes it much harder to learn to
+Vanishing gradients in RNNs make it much harder to learn to
 store information for long time periods. This causes RNNs struggle to
 solve simple tasks if the solution requires remembering an input for many
 time steps.
 
 \subsubsection{Butterfly Effect}
 A second issue is shared with many iterated non-linear	
-dynamical systems: the ``butterfly effect.'' This is that seemingly negligible changes
+dynamical systems: the \emph{butterfly effect}. This is that seemingly negligible changes
 in initial conditions can lead to catastrophic changes after many iterations
 \autocite{Lorenz1963}. In RNNs this manifests as near-discontinuity of the loss surface
 which can make gradient descent struggle.
@@ -261,8 +267,8 @@ now commonly used to address the vanishing gradient problem in very deep feed-fo
 \subsection{LSTM}
 The LSTM was proposed precisely to address the vanishing gradient problem. It uses a number of gates
 to control the flow of information during the computation of new states. Although a number
-of subtle variants exist, the standard LSTM we will consider here has the form: 
-\autocite{Hochreiter1997, Graves2013}
+of subtle variants exist, the standard LSTM we will consider here has the form
+\autocite{Hochreiter1997, Graves2013}:
 \begin{align}\label{eq:LSTM}
 	\vec{h}_t &= \vec{o}_i \odot \tau(\vec{c}_t)\\
 	\vec{c}_t &= \vec{f}_t \odot \vec{c}_{t-1} + \vec{i}_t \odot \vec{g}_t\\
@@ -271,9 +277,9 @@ of subtle variants exist, the standard LSTM we will consider here has the form:
 	\vec{f}_t &= \sigma(\mat{W}_f \vec{c}_{t-1} + \mat{U}_f \vec{x}_t + \vec{b}_f)\\
 	\vec{i}_t &= \sigma(\mat{W}_i \vec{c}_{t-1} + \mat{U}_i \vec{x}_t + \vec{b}_i)
 \end{align} where \(\tau(\cdot)\) refers to the \(\tanh\), \(\sigma(\cdot)\) the
-sigmoid. \(\cdot \odot \cdot\)
-is used to denote element-wise multiplication between vectors. These equations can be hard to take
-at face value -- the key elements are \(\vec{i}_t\), \(\vec{o}_t\), \(\vec{f}_t\), termed the
+sigmoid and \(\odot\)
+is used to denote element-wise multiplication between vectors. 
+The key elements are \(\vec{i}_t\), \(\vec{o}_t\) and \(\vec{f}_t\), termed the
 \emph{input}, \emph{output} and \emph{forget} gates respectively. These are computed in the same fashion
 as the activations of a vanilla neural network but use a sigmoid activation function which varies
 smoothly between zero and one. Combining this with element-wise multiplication has the eponymous
@@ -287,24 +293,25 @@ state from being exposed.
 
 \subsection{GRU}
 A closely related architecture proposed much more recently is the
-GRU \autocite{Cho2014} which computes its state as follows:
+GRU \autocite{Cho2014}:
 \begin{align}\label{eq:GRU}
 	\vec{h}_t &= \vec{f}_t \odot \vec{h}_{t-1} + (1 - \vec{f}_t)\odot\vec{z}_t\\
 	\vec{z}_t &= \tau(\mat{W}_z(\vec{r}_t \odot \vec{h}_{t-1}) + \mat{U}_z\vec{x}_t + \vec{b}_z)\\
 	\vec{f}_t &= \sigma(\mat{W}_f\vec{h}_{t-1} + \mat{U}_f\vec{x}_t + \vec{b}_f)\\
 	\vec{r}_t &= \sigma(\mat{W}_r\vec{h}_{t-1} + \mat{U}_r\vec{x}_t + \vec{b}_r).
-\end{align} This simpler than the LSTM although and makes some interesting alterations.
+\end{align} This simpler than the LSTM and makes some interesting alterations.
 Notably, the forget gate now controls both parts of the state
 update. Further, in the computation of \(\vec{z}_t\) there is a departure from the vanilla
-RNN-style building block that makes up all of the LSTM's components. This is interesting as
-half of the model's parameters are
+RNN-style building block that makes up all of the LSTM's components. 
+Half of the model's parameters are
 dedicated towards computing state updates. The mechanism of their computation places
 significant emphasis on using temporal context to do so -- the \emph{reset} gate
-\(\vec{r}_t\) provides the model with the ability to ignore parts of its state.
+\(\vec{r}_t\) provides the model with the ability to ignore parts of its state but is itself a function of
+the previous state.
 
 These architectures are often used at large scale to solve very hard real world tasks. However,
-the synthetic tasks on which the LSTM was originally validated \autocite{Hochreiter1997} which have
-become popular benchmarks
+the synthetic tasks on which the LSTM was originally validated \autocite{Hochreiter1997}, and which have
+become popular benchmarks,
  overlook a key requirement of a successful RNN architecture. The tasks focus on problems involving long
 time dependencies, but all involve remember either symbols from a fixed, small vocabulary or a single
 real number. We suggest that it is also necessary to evaluate the ability of RNNs to learn to use
@@ -321,8 +328,8 @@ understanding of the problems identified with the above models.
 
 An early attempt to solve the vanishing gradient problem involves feeding inputs to different units
 at different
-rates. The motivation for this is to be to force the network to attend to longer
-time-scales by passing some parts of it information at a slower rate, inducing a hierarchical structure
+rates. The idea is to force the network to attend to longer
+time-scales by passing some information at a slower rate inducing a hierarchical structure
  \autocite{Hihi1995}. 
 This idea has been revisited recently in
 the form of the Clockwork RNN \autocite{Koutnik2014} which flattens the network, simply forcing
@@ -333,7 +340,7 @@ examples include Hierarchical Multiscale RNNs \autocite{Chung2016} and Gated Fee
 with further multiplicative gates.
 
 These approaches have had some success, although it is not clear how adding extra
-multiplicative gates could alleviate the vanishing gradient problem. Secondly, many of these
+multiplicative gates could alleviate the vanishing gradient problem. Also many of these
 approaches add significant extra structures to the network
 to force it to behave in a manner which
 it was already fundamentally capable of. 
@@ -357,7 +364,7 @@ That this is necessary suggests more fundamental changes to the underlying model
 A simpler recent architecture of note is the Unitary Evolution RNN
 \autocite{Arjovsky2015} which guarantee the eigenvalues of the recurrent weight matrix have a
 magnitude of one. While this leads to provably non-vanishing or exploding gradients, in
-practice they still seem to struggle to learn to store information for very long time periods.
+practice they still struggle to learn to store information for very long time periods.
 This is may be due to the somewhat ad-hoc composition of unitary operators used to allow
 unconstrained optimisation of parameters while maintaining the desired properties of the
 recurrent matrix.
@@ -405,7 +412,7 @@ especially as they are likely to at least be partially transferable to any given
 \subsection{Memory}
 This line of research attempts to enhance the capabilities of RNNs by focusing on the way they
 interact with their memory. There are two key motivations for these works. 
-One aim is to decouple the memory from the network so that it can store and interact with arbitrary
+The first is to decouple the memory from the network so that it can store and interact with arbitrary
 quantities of information. The second is the hope that a novel
 method of storing or addressing information will encourage the networks to solve more complex
 tasks than is typically feasible with hidden states alone.
@@ -417,8 +424,8 @@ address mechanism mostly based on the softmax.
 
 Similarly Grefenstette et al. propose a set of neural Deques, Queues and Stacks which attempt to
 address the limitations of the fixed size memory of the Neural Turing Machine 
-\autocite{Grefenstette2015}. A similar approach is also found in Joulin and Mikolov's Stack Augmented
-RNN \autocite{Joulin2015}. These allow for unbounded memory with efficient access, at the cost of
+\autocite{Grefenstette2015}. A similar approach is Joulin and Mikolov's Stack Augmented
+RNN \autocite{Joulin2015}. These allow for unbounded, efficient memory at the cost of
 no random access. Primarily these are proposed as augmentations to an RNN,
 with the idea being that a standard RNN could operate as a small working memory while the more
 complex data structure (with more awkward access semantics) can be used for long-term, exact
@@ -429,16 +436,16 @@ While these approaches can be highly successful, very few of the tasks
 they are evaluated on are tasks that an RNN should inherently be
 incapable of solving. Nearly all of the tasks addressed require a fixed size memory, and solutions
 can be imagined composed of carefully adding and removing information from a running representation.
-Hence it seems as though it is worth revisiting the basic architecture before searching for distinct 
+Hence it is worth revisiting the basic architecture before searching for distinct 
 modules to add on.
 
 An approach in this direction is Danihelka et al.'s Associative LSTM \autocite{Danihelka2016}. 
 This work incorporates an associative memory model into the LSTM by introducing
  something close to a Holographic Reduced Representation \autocite{Plate1995}.
-This is a very encouraging angle -- to re-think the way in which the RNN uses its memory at a basic
-level seems like the most efficient and sensible way to address the issues.
+This is a very encouraging angle -- to re-think how the RNN uses its memory at a basic
+level is an efficient and sensible way to address the issues.
 Unfortunately simply adjusting the network to use such a reduced representation was insufficient for
-good performance and a number of complicating factors had to be incorporated, including keeping many
+good performance and a number of complicating factors had to be incorporated such as keeping many
 redundant copies of memory which diminishes the elegance of the solution.
 
 In
@@ -487,7 +494,7 @@ being \(1\) given a pair of inputs \(\vec{x}\) and \(\vec{y}\) is defined as
 \begin{equation}\label{eq:grbm}
 	p(h_k | \vec{x},\vec{y}) = \sigma\left(\sum_{i,\;j} W_{ijk}x_iy_j \right)
 \end{equation} where \(\sigma(\cdot)\) is the sigmoid discussed earlier \autocite{Memisevic2007}.
-This architecture very naturally extends the operation of a feed-forward network to deal with
+This architecture  naturally extends the operation of a feed-forward network to deal with
 two inputs.
 Unfortunately the size of the
 tensor \(\tensor{W}\) is a serious limitation. This work outlines three key points: 
@@ -512,7 +519,7 @@ effect, especially during back-propagation.
 In order to successfully learn, it was found necessary to add additional bias terms such that
 the final model required four weight matrices and five bias vectors per unit.
 
-Whether explicitly acknowledged or not, both the MRNN and MI-RNN are using a \emph{tensor decomposition}
+Whether explicitly acknowledged or not, both the MRNN and MI-RNN use a \emph{tensor decomposition}
 to manage the parameters of a bilinear 
 multiplicative relationship. Where they differ is the precise form of
 the decomposition and how they apply biases to enhance the expressive power. We find that investigating

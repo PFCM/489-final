@@ -65,7 +65,7 @@ We can generalise the operation to tensors: choose an index over which to perfor
 collect every thread formed by fixing all but that one index and take their inner product with the
 given vector. If the tensor has \(n\) dimensions, the result will have \(n-1\). A three tensor is in
 this way reduced to a matrix. Kolda and Bader introduce the operator
- \(\;\cdot \bar{\times}_i \cdot\;\)
+ \( \bar{\times}_i \)
 for this, where \(i\) represents the index to vary \autocite{Kolda2009}. For the bilinear forms
 we are concerned with, this leads to the following notation:
 \begin{align}
@@ -133,7 +133,7 @@ of these kinds of products.
 		\centering
 		\begin{tikzpicture}
 			\draw
-				(1,0) node (A){} -- (0,0) node(y) {} 
+				(1,0) node (y){} -- (0,0) node(A) {} 
 				-- (-1,0);
 			\node[below=1em of A, fill=none, draw=none, anchor=mid] {\(\mat{A}\)};
 			\node[below=1em of y, fill=none, draw=none, anchor=mid] {\(\vec{y}\)};
@@ -549,12 +549,13 @@ Recalling lemma~\ref{lem:outerprod},
 \( \label{eq:outerquad}
 	\tran{\vec{x}}\tensor{W}\vec{x} = \matr_2(\tensor{W}) \vect(\vec{x}\tran{\vec{x}}).
 \) Note that the diagonal elements of \(\vec{x}\tran{\vec{x}}\) are the components
-\(x_i^2\) which we need to sum to compute the squared norm. We simply need to define
+\(x_i^2\) which we need to sum to compute the squared norm. We need to define
 \(\matr_2(\tensor{W})\) such that it picks out the correct elements and sums them. If 
 \(\vec{x} \in \mathbb{R}^d\) then \(\tensor{W} \in \mathbb{R}^{d \times 1 \times d}\) as we only
 require a single output. The matricisation is then a \(1 \times d^2\) row vector and we simply need
-to set its elements zero apart from those with indices of the form \(1 + id\) for 
-\(i \in \{1, \ldots, d\}\). The matrix product will then simply pick out the elements formerly
+to set its elements to zero apart from those with indices of the form \(1 + id\) for 
+\(i \in \{1, \ldots, d\}\) which we set to one.
+The matrix product will then simply pick out the elements formerly
 on the diagonal and sum them as required.
 \end{proof}
 
@@ -568,8 +569,8 @@ We make use of Eldan and Shamir's proof \autocite{Eldan2016}. The proof is highl
 only describe the alterations required to allow a tensor layer.
 They construct a three-layer network in the following manner:
 for an input \(\vec{x}\), the first two layers learn to approximate the map 
-\(\vec{x}\mapsto ||\vec{x}||^2_2 = \sum_i x_i^2\), the final layer learns a univariate function on the
-squared norm. Finally, it is show this can be done with layers of polynomial width in the input
+\(\vec{x}\mapsto ||\vec{x}||^2_2 = \sum_i x_i^2\), the final layer learns a univariate function of the
+squared norm. Finally it is shown this can be done with layers of polynomial width in the input
 dimension.
 
 Using lemma~\ref{lem:sqnorm}, we can compute the squared norm exactly
@@ -590,10 +591,10 @@ semantics.
 Bilinear products show great promise. Unfortunately
 such a tensor is often very large; an \(n \times n \times n\) tensor
 would require \(\Theta(n^3)\) space
-to store explicitly and a similar number of operations to use to compute a bilinear product. 
-This leads to the idea of using a parameterised decomposition -- an ideal solution
+to store explicitly and a similar number of operations to compute a bilinear product. 
+Managing the size leads to the idea of using a parameterised decomposition -- an ideal solution
 would be a method of representing the tensor with some way of specifying the complexity of the
-bilinear relationship and hence making explicit the relationship between the number of parameters
+bilinear relationship and hence making explicit the balance between the number of parameters
 required and the expressive power of the model. 
 
 Here we outline and analyse the single most important decomposition. We note that
@@ -619,8 +620,8 @@ This method of decomposing a tensor dates as far back as 1927
 \autocite{Hitchcock1927, Hitchcock1928} but has been rediscovered repeatedly in a range of
 contexts \autocite{Kolda2009}. First referred to as `polyadic
 form of a tensor' we refer to it as the CP-decomposition after two prominent publications in
-1970 referring to the technique as `canonical decomposition' (CANDECOMP) \autocite{Carroll1970}
- or `parallel factors' (PARAFAC). \autocite{Harshman1970}
+1970 referring to the technique as \emph{canonical decomposition} (CANDECOMP) \autocite{Carroll1970}
+ or \emph{parallel factors} (PARAFAC). \autocite{Harshman1970}
  It is a fairly straightforward
 extension of a matrix rank decomposition to the more general case, representing a tensor as
 a sum of rank one tensors. Some interesting results on the uniqueness of the decompositions can be found
@@ -632,7 +633,7 @@ approximate it as
 \begin{equation}\label{eq:cp-statement}
 	\tensor{X} \approx \sum_{r=1}^{R} \vec{a}_r \otimes \vec{b}_r \otimes \vec{c}_r
 \end{equation}
- where \(R\) is the \emph{rank} of the decomposition and \(\cdot \otimes \cdot\) denotes the tensor
+ where \(R\) is the \emph{rank} of the decomposition and \( \otimes \) denotes the tensor
 product. This product expands the dimensions; for the first two vectors it is the outer product
 \(\vec{a}\tran{\vec{b}}\) which generates a matrix consisting of the product of each pair of
 elements in \(\vec{a}\) and \(\vec{b}\). With three such products we proceed analogously, except
@@ -696,7 +697,7 @@ an auxiliary \(R\times R\times R\) tensor, denoted \(\tensor{I}_{R}\) which is d
 	\end{cases}
 \end{equation} in a manner analogous to the identity matrix. Taking a bilinear product with this
 tensor represents element-wise multiplication of the two vectors (see proposition~\ref{prop:identity}
-in the appendix). This is
+in the appendix). This diagonality is
 represented diagrammatically with the symbol
 \rotatebox[origin=c]{-180}{\(\oslash\)},
 shown in 
@@ -763,7 +764,7 @@ As the end goal is the gradient of a vector with respect
 to a matrix it should naturally be represented by a three-way tensor of partial derivatives.
 Many authors avoid this by
 vectorising the matrix \autocite{Magnus2007}, but for the purposes below it is sufficient to note
-that the gradients are highly structured, and we can write a simple form for each partial derivative.
+that the gradients are highly structured and we can write a simple form for each partial derivative.
 
 Let \(\vec{z}\) be defined as above.
 The gradient of \(\vec{z}\) with respect to \(\mat{A}\) has entries of the form:
@@ -804,7 +805,7 @@ This is known to be impossible with a single standard
 feed-forward layer, so if the tensor layer is successful
 in this task it would provide a useful demonstration of the difference in expressive power.
 
-\subsubsection{Experiment Details}
+\subsubsection{Experiment Setup}
 Truth values are represented as binary ones and zeros. 
 As there are only four data points, all were evaluated for each parameter update.
 All models were trained using standard gradient descent with a learning rate of \(0.5\).
@@ -820,7 +821,7 @@ between the architectures. To show that the differences are fundamental we repea
 times and observe consistent results.
 
 \subsubsection{Results}
-The baseline cross entropy is \(-\log0.5 = 0.6931\), which corresponds to outputting
+The baseline cross entropy is \(-\log0.5 = 0.6931\), which corresponds to an output of
 0.5 for all inputs (or guessing uniformly at random). 
 As expected the simple perceptron
 converges rapidly to this point. Both the MLP and the tensor are able to solve the task,
@@ -894,7 +895,7 @@ decomposition to model non-trivial interactions was a feasible goal.
 
 We use a model with
 embeddings of size \(25\) and a rank \(25\) CP-decomposition. This model has 78,350
-parameters, while a the explicit \(25 \times 1024 \times 25\) tensor
+parameters, while the explicit \(25 \times 1024 \times 25\) tensor
 would have 641,550, an eight fold difference in size. 
 We train the model using ADAM \autocite{Kingma2014}, a variant of
 stochastic gradient descent which dynamically rescales the step size, to minimise the squared error:
@@ -934,7 +935,7 @@ This suggests that the aim of inserting such tensor products into more complex n
 is feasible, reinforcing the promising theoretical results.
 
 
-\begin{figure}[tp]
+\begin{figure}[p]
 	\begin{subfigure}[t]{\textwidth}
 	\begin{tabu} to \textwidth {XXXXXXXXXX}
 		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output0} &
@@ -952,7 +953,7 @@ is feasible, reinforcing the promising theoretical results.
 			 fixed.}
 	\end{subfigure}
 	\\
-	\begin{subfigure}[t]{\textwidth}
+	\begin{subfigure}[p]{\textwidth}
 	\begin{tabu} to \textwidth {XXXXXXXXXX}
 		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output10} &
 		\includegraphics[width=0.09\textwidth]{tensors/sandc/interp/output11} &
@@ -970,7 +971,7 @@ is feasible, reinforcing the promising theoretical results.
 	\caption{Learned style and content representations.}
 	\label{fig:sandc-interp}
 \end{figure}
-\begin{figure}[tp]
+\begin{figure}[p]
 	\begin{subfigure}[t]{\textwidth}
 		\begin{tabu} to \textwidth {XXXXXXXXX}
 			\includegraphics[scale=1]{tensors/sandc/valid/real/Georgia-76} &

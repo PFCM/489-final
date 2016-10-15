@@ -16,7 +16,7 @@
 
 %% These are standard LaTeX definitions for the document
 %%                            
-\title{some kind of rnn/tensor mess}
+\title{Recurrent Tensor Networks}
 \author{Paul Francis Cunninghame Mathews}
 
 %% This file can be used for creating a wide range of reports
@@ -33,10 +33,21 @@
 % [font|image]            Use a font or an image for the VUW logo
 %                          The font option will only work on ECS systems
 %
+
 \usepackage[image,ecs,bschonscomp]{vuwproject}
+%\usepackage{unicode-math}
+
+%\setmathfont[math-style=ISO,bold-style=ISO,vargreek-shape=TeX]{TeX Gyre Pagella Math}
+
+%\usepackage{fontspec}
+%
+%\setromanfont[Ligatures=TeX]{TeX Gyre Pagella}
+%
+%% see if we can get the macrons back
+%\UndeclareUTFComposit[\UTFencname]{
 
 \usepackage{microtype}
-\usepackage[style=numeric, firstinits=true, url=false, isbn=false, doi=false]{biblatex}% "style=numeric" is default
+\usepackage[style=numeric, firstinits=true, url=false, isbn=false, doi=false, backend=biber]{biblatex}% "style=numeric" is default
 
 \addbibresource{library.bib}
 
@@ -85,7 +96,7 @@
   \newunit}
 
 \usepackage{tabu}
-\usepackage{graphicx}
+\usepackage{graphbox}
 \usepackage{subcaption}
 
 \usepackage{mathtools}
@@ -146,22 +157,22 @@
 
 \begin{abstract}
 
-Recurrent Neural Networks are a class of machine learning techniques for handling sequential
+Recurrent Neural Networks (RNNs) are a class of machine learning techniques for handling sequential
 data. They have achieved great practical success but
-prominent architectures are opaque and unwieldy. We reveal a \emph{tensor} structure inherent
+prominent architectures are unwieldy and poorly understood.
+We reveal a \emph{tensor} structure inherent
 to the most successful of these networks. 
-Understanding and analysing this structure gathers valuable insights into the mechanisms
-and shows a natural way of extending neural networks with multi-linear algebra and tensor
+Understanding and analysing this structure provides valuable insights
+and shows a natural way to extend neural networks with multi-linear algebra and tensor
 decompositions.
 
-This allows us to propose the Tensor Gate Unit,
-a novel recurrent network architecture. This architecture is designed to be simple
-and modular, with only a minimum of components needed for performance.
-We show empirically that this relatively simple architecture is far better at solving
-a number of pathological tasks than standard approaches. We also demonstrate highly
-competitive results on real-world data, making use of the explicit tensor decomposition to
-manage the tradeoff between expressive power and generalisation performance.
-
+We propose two types of Recurrent Tensor Networks that utilise these observations:
+the Generalised Multiplicative RNN and the Tensor Gate Unit. The former unifies a number of existing
+architectures into a single framework by drawing out the implicit tensor structure. The latter draws
+from prominent gated RNNs to construct a novel architecture which is simple yet remarkably effective.
+We demonstrate their performance across a range of tasks exhibiting remarkable results
+while also illustrating a
+useful way to trade off model capacity with generalisation ability.
 \end{abstract}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

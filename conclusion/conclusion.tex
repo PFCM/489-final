@@ -1,46 +1,110 @@
 % !TEX root = ../proj_report_outline.tex
 \chapter{Conclusions}\label{C:con}
-The first key observation is that gated RNNs have an inherent tensorial structure. Detailed
-analysis of this structure indicates that it contributes greatly to their expressive power.
-This leads to the idea of designing new networks that draw this out, allowing
-for control over the balance between representative capacity and practical requirements.
-By fully realising this important underlying processes we can 
-gain much more of an understanding into how the network arrives at solutions to sequence
-problems.
+% background: RNNs good, multiplicative RNNs better
+% theory:
+% theory: multiplicative rnns => tensors
+RNNs are highly successful models for sequence learning, 
+the most successful of which all incorporate some form of multiplicative
+gating. Multiplicative interactions are naturally parameterised using bilinear tensor
+products; understanding these is therefore essential to designing
+successful RNNs.
+% theory: tensors => wins
+We find such tensor products to be highly expressive and flexible building blocks for
+neural networks, naturally capturing complex relationships between two inputs. We
+therefore propose an RNN architecture, the Generalised Multiplicative RNN (GMR), which
+uses a bilinear product at its core.
 
-The second key observation is that networks with a gated, additive state update are very appealing.
-This structure allows the network to sit on the border between vanishing and
-exploding gradients and should therefore allow excellent learning performance. 
-Intuitively it helps force the network to compute a sensible reduced representation of the
-entire sequence. Correspondingly we
-retain this structure when designing novel architectures.
+% theory: additive gated rnns good
+We also show the benefits of RNNs with an additive state update:
+it naturally pushes the network to the edge between vanishing and exploding gradients.
+Managing such a structure with a multiplicative gate is a key reason why RNNs such as
+the LSTM and GRU are successful. Comparing the two gating mechanisms employed by the
+LSTM and GRU, we find that the \emph{convex} gate from the GRU has the appealing property
+of being able to manage both the acceptance and rejection of potential state updates with
+a single signal.
 
-This means we have three choices to make: how to perform
-the gating, how to compute the gate signal and how to compute the additive update. By reasoned analysis,
-we arrive at clear conclusions for all of them, including taking the novel step of computing an
-additive update which does not depend on the previous hidden state. This is a key novelty in our
-proposed class of architectures which allows them to allocate more expressive power to controlling
-the flow of information.  
+The proposed Tensor Gate Unit (TGU) takes full advantage of this convex gate.
+It controls access to its memory with a bilinear tensor unit which increases the range
+of allowable access patterns considerably. 
+Imbuing the gate with the extra expressivity of a tensor product means
+we are able to produce candidate updates in a purely feed-forward manner which provides
+an appealing separation of roles.
 
-Empirically, we find our conclusions are justified. Our architecture
-demonstrates the ability to store items in
-memory for extraordinarily
-long time periods and the ability to store and reproduce arbitrary inputs well in advance
-of existing architectures. This illustrates the benefits of carefully
-simplifying the architecture -- as each
-component has a clearly defined role we observe rapid learning even on highly challenging tasks.
+% practice:
+% practice: synthetic big wins
+% practice: addition super long
+Empirically, we find the TGU and GMR demonstrate excellent performance. On a synthetic addition
+task which contains long time dependencies the TGU exhibits none of the difficulties encountered
+by other models.
+In fact, we are unable to find a sequence too long for the TGU --
+we achieve successful results learning time dependencies more than 10 times longer than previously reported.
+This amounts to training a feed-forward network with shared weights
+at each layer that is up to 5 times deeper than the deepest reported.
+% practice: variable binding exists now and we win at it
 
-We also investigate the role of the extra hyper-parameter introduced by utilising a tensor decomposition.
-Reducing the rank is found to have a useful regularising effect, helping to improve generalisation 
-performance on real-world data when
-set appropriately. This again points to the utility of making explicit the underlying tensor structure
-in gated networks. Once we have control over the decomposition we can use it to our advantage to
-trade off representative power with generalisation ability.
+To investigate the ability of the TGU to use its memory carefully, we look for a task which requires
+writing and retrieving arbitrary patterns. As a satisfactory task was
+not present in the literature, we propose a novel task to test RNNs in this way. Again the TGU shows
+performance clearly beyond the LSTM and the GRU.
 
-We have presented a new class of promising architectures for recurrent neural networks.
-Existing approaches are either seriously flawed or opaque and over-complicated.
-This necessitates finding more elegant solutions which maintain the performance but keep
-only components with clearly defined roles and a minimum of confusion and complexity.
-Further, the analysis and intuitions that lead to these architectures provide a new way
-of thinking about the building blocks of RNNs which could inform much novel work beyond
-our own.
+% practice: mnist is dumb
+We also address a popular synthetic task: classifying permuted MNIST digits. While the TGU performs
+creditably, we observe that this dataset is somewhat unnatural. To show this we design two further
+architectures, the CP+ and the CP-\(\Delta\) which perform remarkably well on this task despite their
+clear shortcomings. We suggest this task does not require selective access to memory to solve. As the
+CP+ and CP-\(\Delta\) have constrained processes in this regard, the fact that they can perform well
+reinforces this hypothesis.
+
+% practice: real life
+% practice: music success, suggests regularisation
+Further results on a number of polyphonic music
+datasets indicate that the two recurrent tensor networks exhibit excellent performance. 
+We observe that models with lower rank tensor decompositions often generalise better than more
+complex models.
+% practice: ptb success, confirms regularisation
+To investigate whether this effect can be harnessed to control model complexity
+we carry out two further experiments. On the Penn Treebank and the novel War and Peace we find
+that controlling the rank of the tensor indeed allows for control over the balance between expressive
+power and generalisation performance.
+
+% k bye
+We have demonstrated a new way of thinking about the building blocks of recurrent neural networks.
+By investigating thoroughly the implicit tensor structure common to successful architectures we
+find a powerful way to incorporate tensors into neural networks in a manner which naturally
+extends the basic structures to handle two inputs. Incorporating a flexible tensor decomposition into
+recurrent neural networks gives us a class of Recurrent Tensor Networks with a bilinear product
+at their core. Two such networks are proposed which demonstrate excellent performance due to both
+the architectural advancements in the TGU and the ability to tune the rank of the tensor decomposition
+to balance model complexity with generalisation performance.
+
+%\section{Summary of Results}
+%\hl{Won't stay}
+%
+%\subsection{Synthetic tasks}
+%\subsubsection{Addition}
+%TGU consistently best performer regardless of sequence length. GRU and TGU converge significantly
+%faster than other reported results. GRU and TGU evaluated on very long sequences, unable to find a
+%sequence long enough for the TGU to fail. Successfully trained TGU which if unrolled would be more than 5 times
+%the deepest feed-forward nets.
+%
+%\subsubsection{Variable Binding}
+%TGU consistently best performer. Indicates ability to better utilise memory, also easier to train.
+%Only architecture to make consistent progress on all tasks.
+%
+%\subsubsection{Sequential MNIST}
+%Proved task is not helpful by achieving excellent performance with architectures which can not hope
+%to succeed in general. TGU still performed admirably.
+%
+%\subsection{Real-world data}
+%\subsubsection{Polyphonic Music}
+%GMR and TGU showed better performance. Grid search consistently chose lower rank tensors, suggesting a
+%regularising effect.
+%
+%\subsubsection{PTB}
+%Allowed tensor decomposition to alter parameters to see if it is a useful way to regularise models.
+%TGU achieved best performance of all models, using low rank tensor. Observed `sweet spot' after which
+%reducing the rank harmed performance.
+%
+%\subsubsection{War and Peace}
+%Kept number of parameters constant to see effect of low rank in isolation. Found it to have excellent
+%regularising performance, with GMR-C the best performing model (and also most affected by low rank).
